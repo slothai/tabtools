@@ -157,7 +157,8 @@ class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
     def __init__(self, key, value):
         super(DataDescriptionSubheaderOrder, self).__init__(key, value)
         self.ordered_fields = [
-            f for f in value.split(DataDescription.DELIMITER)
+            OrderedField.parse(f)
+            for f in value.split(DataDescription.DELIMITER)
         ]
 
 
