@@ -50,6 +50,37 @@ class TestOrderedField(unittest.TestCase):
         with self.assertRaises(ValueError):
             OrderedField("a", sort_type="unknown sort type")
 
+    def test__eq__(self):
+        self.assertEqual(OrderedField("a"), OrderedField("a"))
+        self.assertEqual(OrderedField("a"), OrderedField("a", sort_type=""))
+        self.assertEqual(OrderedField("a"), OrderedField("a", sort_order=""))
+        self.assertEqual(
+            OrderedField("a"), OrderedField("a", sort_type="", sort_order=""))
+        self.assertEqual(
+            OrderedField("a", sort_type="n"),
+            OrderedField("a", sort_type="n")
+        )
+        self.assertEqual(
+            OrderedField("a", sort_order="r"),
+            OrderedField("a", sort_order="r")
+        )
+        self.assertEqual(
+            OrderedField("a", sort_type="n", sort_order="r"),
+            OrderedField("a", sort_type="n", sort_order="r")
+        )
+
+        self.assertNotEqual(OrderedField("a"), OrderedField("b"))
+        self.assertNotEqual(
+            OrderedField("a"), OrderedField("a", sort_order="r"))
+        self.assertNotEqual(
+            OrderedField("a"), OrderedField("a", sort_type="n"))
+
+    def test_parse(self):
+        pass
+
+    def test_parse_error(self):
+        pass
+
     def test_sort_flag(self):
         self.assertEqual(OrderedField("a").sort_flag, "")
         self.assertEqual(OrderedField("a", sort_type="M").sort_flag, "M")

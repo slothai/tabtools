@@ -75,6 +75,12 @@ class OrderedField(object):
         self.sort_type = sort_type or self.SORT_TYPES.STRING
         self.sort_order = sort_order or self.SORT_ORDERS.ASCENDING
 
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.title == other.title and \
+            self.sort_type == other.sort_type and \
+            self.sort_order == other.sort_order
+
     @property
     def sort_flag(self):
         flag = ""
