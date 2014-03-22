@@ -90,16 +90,25 @@ class TestOrderedField(unittest.TestCase):
 
 
 class TestDataDescriptionSubheader(unittest.TestCase):
+    def setUp(self):
+        self.subheader1 = DataDescriptionSubheader("key", "value")
+        self.subheader2 = DataDescriptionSubheader("key", "value")
+        self.subheader3 = DataDescriptionSubheader("ORDER", "a:asc b:desc")
+
     def test_str(self):
-        subheader = DataDescriptionSubheader("key", "value")
-        self.assertEqual(str(subheader), " #key: value")
-        subheader = DataDescriptionSubheader("ORDER", "a:asc b:desc")
-        self.assertEqual(str(subheader), " #ORDER: a:asc b:desc")
+        self.assertEqual(str(self.subheader1), " #key: value")
+        self.assertEqual(str(self.subheader3), " #ORDER: a:asc b:desc")
+
+    def test__eq__(self):
+        self.assertEqual(self.subheader1, self.subheader2)
+        self.assertNotEqual(self.subheader1, self.subheader3)
 
     def test_parse(self):
-        subheader = DataDescriptionSubheader("key", "value")
         self.assertEqual(
-            subheader, DataDescriptionSubheader.parse(" #key: value"))
-        subheader = DataDescriptionSubheader("ORDER", "a:asc b:desc")
+            DataDescriptionSubheader.parse(" #key: value"),
+            self.subheader1,
+        )
         self.assertEqual(
-            subheader, DataDescriptionSubheader.parse(" #ORDER: a:asc b:desc"))
+            DataDescriptionSubheader.parse(" #ORDER: a:asc b:desc"),
+            self.subheader3,
+        )
