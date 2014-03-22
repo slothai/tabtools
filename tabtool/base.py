@@ -125,11 +125,11 @@ class DataDescription(object):
 
     def __init__(self, fields=None, subheaders=None, meta=None):
         self.fields = fields or ()
-        self.subheaders = subheaders or ()
+        self.subheaders = subheaders or {}
         self.meta = meta
 
     def __str__(self):
         return "# {}{}".format(
             self.DELIMITER.join(map(str, self.fields)),
-            "".join(map(str, self.subheaders + (self.meta, )))
+            "".join(map(str, list(self.subheaders) + [self.meta]))
         )
