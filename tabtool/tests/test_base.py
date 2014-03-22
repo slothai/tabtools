@@ -1,7 +1,7 @@
 import unittest
 
 from ..base import (
-    Field, OrderedField, DataDescriptionSubheader
+    Field, OrderedField, DataDescriptionSubheader, DataDescription
 )
 
 
@@ -128,3 +128,31 @@ class TestDataDescriptionSubheader(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             DataDescriptionSubheader.parse(" #key:value")
+
+
+class TestDataDescription(unittest.TestCase):
+    def setUp(self):
+        self.fields = (
+            Field("a", "float"),
+            Field("b", "bool"),
+            Field("c"),
+        )
+        self.subheaders = (
+            DataDescriptionSubheader("SIZE", 1),
+            DataDescriptionSubheader("ORDER", "c:asc a:desc:numeric"),
+        )
+        meta = "Data description and licence could be here. Even #META: tags!"
+        self.meta = DataDescriptionSubheader("META", meta)
+        self.data_description = DataDescription(
+            fields=self.fields,
+            subheaders=self.subheaders,
+            meta=self.meta
+        )
+        self.header = "# a:float b:bool c #SIZE: 1" +\
+            "#ORDER: c:asc a:desc:numeric #META: {}".format(meta)
+
+    def test_str(self):
+        self.assertEqual(str(self.data_description), self.header)
+
+    def test_parse(self):
+        pass
