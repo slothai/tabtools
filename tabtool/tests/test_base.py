@@ -1,7 +1,11 @@
 import unittest
 
 from ..base import (
-    Field, OrderedField, DataDescriptionSubheader, DataDescription
+    DataDescription,
+    DataDescriptionSubheader,
+    DataDescriptionSubheaderOrder,
+    Field,
+    OrderedField,
 )
 
 
@@ -103,6 +107,17 @@ class TestDataDescriptionSubheader(unittest.TestCase):
         self.assertEqual(self.subheader1, self.subheader2)
         self.assertNotEqual(self.subheader1, self.subheader3)
 
+    def test__eq__inherited(self):
+        class DataDescriptionSubheaderChild(DataDescriptionSubheader):
+            pass
+
+        subheader_child1 = DataDescriptionSubheaderChild(
+            self.subheader1.key, self.subheader1.value)
+        subheader_child2 = DataDescriptionSubheaderChild(
+            self.subheader2.key, self.subheader2.value)
+        self.assertNotEqual(self.subheader1, subheader_child1)
+        self.assertEqual(subheader_child1, subheader_child2)
+
     def test_parse(self):
         self.assertEqual(
             DataDescriptionSubheader.parse(" #key: value"),
@@ -128,6 +143,23 @@ class TestDataDescriptionSubheader(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             DataDescriptionSubheader.parse(" #key:value")
+
+
+class TestDataDescriptionSubheaderOrder(unittest.TestCase):
+    def setUp(self):
+        self.subheader = DataDescriptionSubheaderOrder(
+            "ORDER", "a:asc b:desc:numeric")
+        self.ordered_fields = (
+            OrderedField("a"),
+            OrderedField("b", sort_type="n", sort_order="r"),
+        )
+
+    def test_init(self):
+        self.assertEqual(self.subheader.ordered_fields, self.ordered_fields)
+
+    def test_parse(self):
+        subheader = DataDescriptionSubheaderOrder.parse(str(self.subheader))
+        self.assertEqual(self.subheader, subheader)
 
 
 class TestDataDescription(unittest.TestCase):

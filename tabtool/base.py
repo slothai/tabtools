@@ -91,7 +91,7 @@ class DataDescriptionSubheader(object):
         return " #{}: {}".format(self.key, self.value)
 
     def __eq__(self, other):
-        return isinstance(other, DataDescriptionSubheader) and \
+        return isinstance(other, self.__class__) and \
             self.key == other.key and self.value == other.value
 
     @classmethod
@@ -101,6 +101,12 @@ class DataDescriptionSubheader(object):
             raise ValueError("Subheader should start with '{}'".format(prefix))
         key, value = subheader[len(prefix):].split(": ", 1)
         return DataDescriptionSubheader(key, value)
+
+
+class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
+    def __init__(self, key, value):
+        super(DataDescriptionSubheaderOrder, self).__init__(key, value)
+        self.ordered_fields = ()
 
 
 class DataDescription(object):
