@@ -72,7 +72,10 @@ class OrderedField(object):
         return flag
 
     def __str__(self):
-        return ":".join([self.title, self.sort_order])
+        terms = [self.title, dict(self.SORT_ORDERS)[self.sort_order]]
+        if self.sort_type:
+            terms.append(dict(self.SORT_TYPES)[self.sort_type])
+        return ":".join(terms)
 
 
 class DataDescription(object):
