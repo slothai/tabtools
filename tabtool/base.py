@@ -100,7 +100,7 @@ class DataDescriptionSubheader(object):
         if not subheader.startswith(prefix):
             raise ValueError("Subheader should start with '{}'".format(prefix))
         key, value = subheader[len(prefix):].split(": ", 1)
-        return DataDescriptionSubheader(key, value)
+        return cls(key, value)
 
 
 class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
