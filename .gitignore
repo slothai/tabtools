@@ -1,0 +1,6 @@
+﻿*.egg-info
+*.egg-info/
+*.py[co]
+.ropeproject
+.tox
+__pycache__
