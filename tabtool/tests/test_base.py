@@ -219,29 +219,21 @@ class TestDataDescriptionSubheader(unittest.TestCase):
 
     def test_parse(self):
         self.assertEqual(
-            DataDescriptionSubheader.parse(" #key: value"),
+            DataDescriptionSubheader.parse("key: value"),
             self.subheader1,
         )
         self.assertEqual(
-            DataDescriptionSubheader.parse(" #ORDER: a:asc b:desc"),
+            DataDescriptionSubheader.parse("ORDER: a:asc b:desc"),
             self.subheader3,
         )
 
     def test_parse_incorrect(self):
+        DataDescriptionSubheader.parse("key: value")
         with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse("key: value")
+            DataDescriptionSubheader.parse("key value")
 
         with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse("#key: value")
-
-        with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse(" key: value")
-
-        with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse(" #key value")
-
-        with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse(" #key:value")
+            DataDescriptionSubheader.parse("key:value")
 
 
 class TestDataDescriptionSubheaderOrder(unittest.TestCase):
@@ -257,7 +249,8 @@ class TestDataDescriptionSubheaderOrder(unittest.TestCase):
         self.assertEqual(self.subheader.ordered_fields, self.ordered_fields)
 
     def test_parse(self):
-        subheader = DataDescriptionSubheaderOrder.parse(str(self.subheader))
+        subheader = DataDescriptionSubheaderOrder.parse(
+            str(self.subheader)[len(DataDescriptionSubheaderOrder.PREFIX):])
         self.assertEqual(self.subheader, subheader)
 
 
@@ -330,4 +323,34 @@ class TestDataDescription(unittest.TestCase):
         self.assertNotEqual(self.data_description, data_description)
 
     def test_parse(self):
-        pass
+        self.assertEqual(
+            DataDescription.parse(str(self.data_description)),
+            self.data_description
+        )
+
+    def test_parse_error(self):
+        DataDescription.parse("# ")
+        with self.assertRaises(ValueError):
+            DataDescription.parse("")
+
+        with self.assertRaises(ValueError):
+            DataDescription.parse("#")
+
+        DataDescription.parse("# a")
+        with self.assertRaises(ValueError):
+            DataDescription.parse("a")
+
+        with self.assertRaises(ValueError):
+            DataDescription.parse("#a")
+
+        DataDescription.parse("# a b #SIZE: 1")
+        with self.assertRaises(ValueError):
+            DataDescription.parse("# a b#SIZE: 1")
+
+        DataDescription.parse("# a b #SIZE: 1 #ORDER: a:asc")
+        with self.assertRaises(ValueError):
+            DataDescription.parse("# a b #SIZE: 1 ##ORDER: a:asc")
+
+        DataDescription.parse("# a #ORDER: b")
+        with self.assertRaises(ValueError):
+            DataDescription.parse("# a #ORDER: b:asc")
