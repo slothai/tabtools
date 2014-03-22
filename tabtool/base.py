@@ -14,11 +14,18 @@ class Field(object):
     )
 
     def __init__(self, title, _type=None):
+        if " " in title:
+            raise ValueError("Field title has space: {}".format(title))
+
         if _type is not None and _type not in self.TYPES:
             raise ValueError("Unknown type {}".format(_type))
 
         self.title = title
         self.type = _type or self.TYPES.NULL
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.title == other.title and self.type == other.type
 
     def __repr__(self):
         return "<{} ({}:{})>" % (
@@ -30,6 +37,13 @@ class Field(object):
             return self.title
         else:
             return "{}:{}".format(self.title, self.type)
+
+    @classmethod
+    def parse(cls, field):
+        if field.endswith(":"):
+            raise ValueError("field does not have type: {}".format(field))
+
+        return Field(*field.split(":"))
 
 
 class OrderedField(object):
@@ -106,7 +120,9 @@ class DataDescriptionSubheader(object):
 class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
     def __init__(self, key, value):
         super(DataDescriptionSubheaderOrder, self).__init__(key, value)
-        self.ordered_fields = ()
+        self.ordered_fields = [
+            f for f in value.split(DataDescription.DELIMITER)
+        ]
 
 
 class DataDescription(object):

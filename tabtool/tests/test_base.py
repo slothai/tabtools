@@ -14,6 +14,9 @@ class TestField(unittest.TestCase):
         with self.assertRaises(ValueError):
             Field("a", "unknown_type")
 
+        with self.assertRaises(ValueError):
+            Field("title with space")
+
     def test_str_no_type(self):
         self.assertEqual(str(Field("a")), "a")
         self.assertEqual(str(Field("a", None)), "a")
