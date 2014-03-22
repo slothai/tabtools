@@ -112,3 +112,19 @@ class TestDataDescriptionSubheader(unittest.TestCase):
             DataDescriptionSubheader.parse(" #ORDER: a:asc b:desc"),
             self.subheader3,
         )
+
+    def test_parse_incorrect(self):
+        with self.assertRaises(ValueError):
+            DataDescriptionSubheader.parse("key: value")
+
+        with self.assertRaises(ValueError):
+            DataDescriptionSubheader.parse("#key: value")
+
+        with self.assertRaises(ValueError):
+            DataDescriptionSubheader.parse(" key: value")
+
+        with self.assertRaises(ValueError):
+            DataDescriptionSubheader.parse(" #key value")
+
+        with self.assertRaises(ValueError):
+            DataDescriptionSubheader.parse(" #key:value")
