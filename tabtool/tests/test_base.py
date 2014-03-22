@@ -149,7 +149,7 @@ class TestDataDescription(unittest.TestCase):
             meta=self.meta
         )
         self.header = "# a:float b:bool c #SIZE: 1" +\
-            "#ORDER: c:asc a:desc:numeric #META: {}".format(meta)
+            " #ORDER: c:asc a:desc:numeric #META: {}".format(meta)
 
     def test_str(self):
         self.assertEqual(str(self.data_description), self.header)

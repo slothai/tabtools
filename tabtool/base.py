@@ -9,6 +9,7 @@ class Field(object):
         ("str", "STR"),
         ("int", "INT"),
         ("float", "FLOAT"),
+        ("bool", "BOOL"),
         ("null", "NULL"),
     )
 
@@ -122,8 +123,13 @@ class DataDescription(object):
     DELIMITERS = (",", " ", "\t")
     DELIMITER = " "
 
-    def __init__(self, fields=None, ordering=None, size=None, meta=None):
+    def __init__(self, fields=None, subheaders=None, meta=None):
         self.fields = fields or ()
-        self.ordering = ordering or ()
-        self.size = size
+        self.subheaders = subheaders or ()
         self.meta = meta
+
+    def __str__(self):
+        return "# {}{}".format(
+            self.DELIMITER.join(map(str, self.fields)),
+            "".join(map(str, self.subheaders + (self.meta, )))
+        )
