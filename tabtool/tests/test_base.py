@@ -95,3 +95,11 @@ class TestDataDescriptionSubheader(unittest.TestCase):
         self.assertEqual(str(subheader), " #key: value")
         subheader = DataDescriptionSubheader("ORDER", "a:asc b:desc")
         self.assertEqual(str(subheader), " #ORDER: a:asc b:desc")
+
+    def test_parse(self):
+        subheader = DataDescriptionSubheader("key", "value")
+        self.assertEqual(
+            subheader, DataDescriptionSubheader.parse(" #key: value"))
+        subheader = DataDescriptionSubheader("ORDER", "a:asc b:desc")
+        self.assertEqual(
+            subheader, DataDescriptionSubheader.parse(" #ORDER: a:asc b:desc"))
