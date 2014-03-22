@@ -1,6 +1,8 @@
 import unittest
 
-from ..base import Field, OrderedField
+from ..base import (
+    Field, OrderedField, DataDescriptionSubheader
+)
 
 
 class TestField(unittest.TestCase):
@@ -85,3 +87,11 @@ class TestOrderedField(unittest.TestCase):
         self.assertEqual(
             str(OrderedField("a", sort_type="n", sort_order="r")),
             "a:desc:numeric")
+
+
+class TestDataDescriptionSubheader(unittest.TestCase):
+    def test_str(self):
+        subheader = DataDescriptionSubheader("key", "value")
+        self.assertEqual(str(subheader), " #key: value")
+        subheader = DataDescriptionSubheader("ORDER", "a:asc b:desc")
+        self.assertEqual(str(subheader), " #ORDER: a:asc b:desc")

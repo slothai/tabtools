@@ -78,6 +78,18 @@ class OrderedField(object):
         return ":".join(terms)
 
 
+class DataDescriptionSubheader(object):
+
+    """ Subheader of file."""
+
+    def __init__(self, key, value):
+        self.key = key
+        self.value = value
+
+    def __str__(self):
+        return " #{}: {}".format(self.key, self.value)
+
+
 class DataDescription(object):
 
     """ Data description, taken from header.
@@ -98,8 +110,8 @@ class DataDescription(object):
     DELIMITERS = (",", " ", "\t")
     DELIMITER = " "
 
-    def __init__(self, fields=None, ordering=None, size=None, description=None):
+    def __init__(self, fields=None, ordering=None, size=None, meta=None):
         self.fields = fields or ()
         self.ordering = ordering or ()
         self.size = size
-        self.description = description or ""
+        self.meta = meta
