@@ -95,7 +95,11 @@ class DataDescriptionSubheader(object):
 
     @classmethod
     def parse(cls, subheader):
-        pass
+        prefix = " #"
+        if not subheader.startswith(prefix):
+            raise ValueError("Subheader should start with '{}'".format(prefix))
+        key, value = subheader[len(prefix):].split(": ", 1)
+        return DataDescriptionSubheader(key, value)
 
 
 class DataDescription(object):
