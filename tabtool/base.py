@@ -137,6 +137,9 @@ class DataDescriptionSubheader(object):
         self.key = key
         self.value = value
 
+    def __hash__(self):
+        return hash((self.key, self.value))
+
     def __str__(self):
         return " #{}: {}".format(self.key, self.value)
 
@@ -183,8 +186,8 @@ class DataDescription(object):
     DELIMITER = " "
 
     def __init__(self, fields=None, subheaders=None, meta=None):
-        self.fields = fields or ()
-        self.subheaders = subheaders or {}
+        self.fields = tuple(fields or ())
+        self.subheaders = tuple(subheaders or ())
         self.meta = meta
 
     def __str__(self):
@@ -192,3 +195,12 @@ class DataDescription(object):
             self.DELIMITER.join(map(str, self.fields)),
             "".join(map(str, list(self.subheaders) + [self.meta]))
         )
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.fields == other.fields and \
+            set(self.subheaders) == set(other.subheaders) and \
+            self.meta == other.meta
+
+    def parse(cls, d):
+        pass

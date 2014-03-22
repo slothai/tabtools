@@ -285,5 +285,49 @@ class TestDataDescription(unittest.TestCase):
     def test_str(self):
         self.assertEqual(str(self.data_description), self.header)
 
+    def test__eq__fields(self):
+        data_description = DataDescription(
+            fields=self.fields,
+            subheaders=self.subheaders,
+            meta=self.meta
+        )
+        self.assertEqual(self.data_description, data_description)
+
+        data_description = DataDescription(
+            fields=self.fields[1:],
+            subheaders=self.subheaders,
+            meta=self.meta
+        )
+        self.assertNotEqual(self.data_description, data_description)
+        data_description = DataDescription(
+            fields=self.fields[1:2] + self.fields[0:1] + self.fields[2:],
+            subheaders=self.subheaders,
+            meta=self.meta
+        )
+        self.assertNotEqual(self.data_description, data_description)
+
+    def test__eq__subheaders(self):
+        data_description = DataDescription(
+            fields=self.fields,
+            subheaders=self.subheaders[1:],
+            meta=self.meta
+        )
+        self.assertNotEqual(self.data_description, data_description)
+        data_description = DataDescription(
+            fields=self.fields,
+            subheaders=self.subheaders[1:] + self.subheaders[0:1],
+            meta=self.meta
+        )
+        self.assertEqual(self.data_description, data_description)
+
+    def test__eq__meta(self):
+        meta = DataDescriptionSubheader("META", self.meta.value[:-1])
+        data_description = DataDescription(
+            fields=self.fields,
+            subheaders=self.subheaders,
+            meta=meta
+        )
+        self.assertNotEqual(self.data_description, data_description)
+
     def test_parse(self):
         pass
