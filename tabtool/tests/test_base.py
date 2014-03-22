@@ -21,6 +21,26 @@ class TestField(unittest.TestCase):
     def test_str_with_type(self):
         self.assertEqual(str(Field("a", "str")), "a:str")
 
+    def test__eq__(self):
+        self.assertEqual(Field("a"), Field("a"))
+        self.assertEqual(Field("a"), Field("a", None))
+        self.assertEqual(Field("a", "str"), Field("a", "str"))
+
+        self.assertNotEqual(Field("a"), Field("b"))
+        self.assertNotEqual(Field("a"), Field("a", "str"))
+        self.assertNotEqual(Field("a", "int"), Field("a", "str"))
+
+    def test_parse(self):
+        self.assertEqual(Field.parse("a"), Field("a"))
+        self.assertEqual(Field.parse("a:str"), Field("a", "str"))
+
+    def test_parse_error(self):
+        with self.assertRaises(ValueError):
+            Field.parse("a:")
+
+        with self.assertRaises(ValueError):
+            Field.parse("a str")
+
 
 class TestOrderedField(unittest.TestCase):
     def test_init(self):
@@ -149,10 +169,10 @@ class TestDataDescriptionSubheaderOrder(unittest.TestCase):
     def setUp(self):
         self.subheader = DataDescriptionSubheaderOrder(
             "ORDER", "a:asc b:desc:numeric")
-        self.ordered_fields = (
+        self.ordered_fields = [
             OrderedField("a"),
             OrderedField("b", sort_type="n", sort_order="r"),
-        )
+        ]
 
     def test_init(self):
         self.assertEqual(self.subheader.ordered_fields, self.ordered_fields)
