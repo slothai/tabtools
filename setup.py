@@ -23,7 +23,7 @@ install_requires = [l for l in read('requirements.txt').split('\n')
                     if l and not l.startswith('#')]
 
 setup(
-    name="mouse",
+    name="tabtool",
     version=version,
     packages=find_packages(),
     # test_suite="nose2.collector.collector",
