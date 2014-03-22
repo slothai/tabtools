@@ -30,16 +30,58 @@ class TestOrderedField(unittest.TestCase):
         self.assertEqual(OrderedField("a", sort_type="h").sort_flag, "h")
         self.assertEqual(OrderedField("a", sort_type="n").sort_flag, "n")
 
-        self.assertEqual(OrderedField("a", is_reverse=True).sort_flag, "r")
+        self.assertEqual(OrderedField("a", sort_order="r").sort_flag, "r")
         self.assertEqual(
-            OrderedField("a", sort_type="M", is_reverse=True).sort_flag, "Mr")
+            OrderedField("a", sort_type="M", sort_order="r").sort_flag, "Mr")
         self.assertEqual(
-            OrderedField("a", sort_type="R", is_reverse=True).sort_flag, "Rr")
+            OrderedField("a", sort_type="R", sort_order="r").sort_flag, "Rr")
         self.assertEqual(
-            OrderedField("a", sort_type="V", is_reverse=True).sort_flag, "Vr")
+            OrderedField("a", sort_type="V", sort_order="r").sort_flag, "Vr")
         self.assertEqual(
-            OrderedField("a", sort_type="g", is_reverse=True).sort_flag, "gr")
+            OrderedField("a", sort_type="g", sort_order="r").sort_flag, "gr")
         self.assertEqual(
-            OrderedField("a", sort_type="h", is_reverse=True).sort_flag, "hr")
+            OrderedField("a", sort_type="h", sort_order="r").sort_flag, "hr")
         self.assertEqual(
-            OrderedField("a", sort_type="n", is_reverse=True).sort_flag, "nr")
+            OrderedField("a", sort_type="n", sort_order="r").sort_flag, "nr")
+
+    def test_str_no_type_no_ordering(self):
+        self.assertEqual(str(OrderedField("a")), "a:asc")
+
+    def test_str_no_type(self):
+        self.assertEqual(str(OrderedField("a", sort_order="")), "a:asc")
+        self.assertEqual(str(OrderedField("a", sort_order="r")), "a:desc")
+
+    def test_str_no_ordering(self):
+        self.assertEqual(str(OrderedField("a", sort_type="")), "a:asc")
+        self.assertEqual(str(OrderedField("a", sort_type="M")), "a:asc:month")
+        self.assertEqual(str(OrderedField("a", sort_type="R")), "a:asc:random")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="V")), "a:asc:version")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="g")), "a:asc:general-numeric")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="h")), "a:asc:human-numeric")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="n")), "a:asc:numeric")
+
+    def test_str(self):
+        self.assertEqual(
+            str(OrderedField("a", sort_type="", sort_order="r")), "a:desc")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="M", sort_order="r")),
+            "a:desc:month")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="R", sort_order="r")),
+            "a:desc:random")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="V", sort_order="r")),
+            "a:desc:version")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="g", sort_order="r")),
+            "a:desc:general-numeric")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="h", sort_order="r")),
+            "a:desc:human-numeric")
+        self.assertEqual(
+            str(OrderedField("a", sort_type="n", sort_order="r")),
+            "a:desc:numeric")
