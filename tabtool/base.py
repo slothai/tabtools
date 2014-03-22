@@ -89,6 +89,14 @@ class DataDescriptionSubheader(object):
     def __str__(self):
         return " #{}: {}".format(self.key, self.value)
 
+    def __eq__(self, other):
+        return isinstance(other, DataDescriptionSubheader) and \
+            self.key == other.key and self.value == other.value
+
+    @classmethod
+    def parse(cls, subheader):
+        pass
+
 
 class DataDescription(object):
 
