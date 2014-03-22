@@ -63,8 +63,13 @@ class OrderedField(object):
         ("", "ASCENDING", "asc"),
         ("r", "DESCENDING", "desc"),
     )
+    SORT_TYPES_REVERSED = dict(zip(*reversed(list(zip(*SORT_TYPES)))))
+    SORT_ORDERS_REVERSED = dict(zip(*reversed(list(zip(*SORT_ORDERS)))))
 
-    def __init__(self, title, sort_type=None, sort_order=None):
+    def __init__(self, title, sort_order=None, sort_type=None):
+        if " " in title:
+            raise ValueError("Field title has space: {}".format(title))
+
         if sort_type is not None and sort_type not in self.SORT_TYPES:
             raise ValueError("Unknown sort type {}".format(sort_type))
 
@@ -97,6 +102,31 @@ class OrderedField(object):
         if self.sort_type:
             terms.append(dict(self.SORT_TYPES)[self.sort_type])
         return ":".join(terms)
+
+    @classmethod
+    def parse(cls, ordered_field):
+        if ordered_field.endswith(":"):
+            raise ValueError(
+                "OrderedField does not have type: {}".format(ordered_field))
+
+        args = ordered_field.split(":")
+        if len(args) > 1:
+            if not args[1] in cls.SORT_ORDERS_REVERSED:
+                raise ValueError("Sort order {} shoild be in {}".format(
+                    args[1], cls.SORT_ORDERS_REVERSED.keys()
+                ))
+
+            args[1] = cls.SORT_ORDERS_REVERSED[args[1]]
+
+        if len(args) > 2:
+            if not args[2] in cls.SORT_TYPES_REVERSED:
+                raise ValueError("Sort type {} shoild be in {}".format(
+                    args[2], cls.SORT_TYPES_REVERSED.keys()
+                ))
+
+            args[2] = cls.SORT_TYPES_REVERSED[args[2]]
+
+        return OrderedField(*args)
 
 
 class DataDescriptionSubheader(object):

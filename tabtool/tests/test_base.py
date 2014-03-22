@@ -48,7 +48,13 @@ class TestField(unittest.TestCase):
 class TestOrderedField(unittest.TestCase):
     def test_init(self):
         with self.assertRaises(ValueError):
+            OrderedField("field with space")
+
+        with self.assertRaises(ValueError):
             OrderedField("a", sort_type="unknown sort type")
+
+        with self.assertRaises(ValueError):
+            OrderedField("a", sort_order="unknown sort order")
 
     def test__eq__(self):
         self.assertEqual(OrderedField("a"), OrderedField("a"))
@@ -76,10 +82,49 @@ class TestOrderedField(unittest.TestCase):
             OrderedField("a"), OrderedField("a", sort_type="n"))
 
     def test_parse(self):
-        pass
+        self.assertEqual(OrderedField.parse("a:asc"), OrderedField("a"))
+        self.assertEqual(
+            OrderedField.parse("a:desc"), OrderedField("a", sort_order="r"))
+        self.assertEqual(
+            OrderedField.parse("a:asc:month"),
+            OrderedField("a", sort_type="M"))
+        self.assertEqual(
+            OrderedField.parse("a:asc:random"),
+            OrderedField("a", sort_type="R"))
+        self.assertEqual(
+            OrderedField.parse("a:asc:version"),
+            OrderedField("a", sort_type="V"))
+        self.assertEqual(
+            OrderedField.parse("a:asc:general-numeric"),
+            OrderedField("a", sort_type="g"))
+        self.assertEqual(
+            OrderedField.parse("a:asc:human-numeric"),
+            OrderedField("a", sort_type="h"))
+        self.assertEqual(
+            OrderedField.parse("a:asc:numeric"),
+            OrderedField("a", sort_type="n"))
+        self.assertEqual(
+            OrderedField.parse("a:desc:numeric"),
+            OrderedField("a", sort_type="n", sort_order="r"))
 
     def test_parse_error(self):
-        pass
+        with self.assertRaises(ValueError):
+            OrderedField.parse("a:")
+
+        with self.assertRaises(ValueError):
+            OrderedField.parse("a:r")
+
+        with self.assertRaises(ValueError):
+            OrderedField.parse("a:numeric")
+
+        with self.assertRaises(ValueError):
+            OrderedField.parse("a:asc:")
+
+        with self.assertRaises(ValueError):
+            OrderedField.parse("a:desc:")
+
+        with self.assertRaises(ValueError):
+            OrderedField.parse("a:asc:num")
 
     def test_sort_flag(self):
         self.assertEqual(OrderedField("a").sort_flag, "")
