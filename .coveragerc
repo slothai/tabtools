@@ -1,0 +1,11 @@
+[report]
+omit=
+    tabtool/six.py
+    tabtool/tests/*
+source=tabtool
+
+[run]
+omit=
+    tabtool/six.py
+    tabtool/tests/*
+source=tabtool
