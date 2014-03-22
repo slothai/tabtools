@@ -14,6 +14,9 @@ class Field(object):
     )
 
     def __init__(self, title, _type=None):
+        if not title:
+            raise ValueError("Title should exist")
+
         if " " in title:
             raise ValueError("Field title has space: {}".format(title))
 
@@ -28,7 +31,7 @@ class Field(object):
             self.title == other.title and self.type == other.type
 
     def __repr__(self):
-        return "<{} ({}:{})>" % (
+        return "<{} ({}:{})>".format(
             self.__class__.__name__, self.title, self.type
         )
 
@@ -133,6 +136,8 @@ class DataDescriptionSubheader(object):
 
     """ Subheader of file."""
 
+    PREFIX = " #"
+
     def __init__(self, key, value):
         self.key = key
         self.value = value
@@ -141,7 +146,7 @@ class DataDescriptionSubheader(object):
         return hash((self.key, self.value))
 
     def __str__(self):
-        return " #{}: {}".format(self.key, self.value)
+        return "{}{}: {}".format(self.PREFIX, self.key, self.value)
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
@@ -149,10 +154,7 @@ class DataDescriptionSubheader(object):
 
     @classmethod
     def parse(cls, subheader):
-        prefix = " #"
-        if not subheader.startswith(prefix):
-            raise ValueError("Subheader should start with '{}'".format(prefix))
-        key, value = subheader[len(prefix):].split(": ", 1)
+        key, value = subheader.split(": ", 1)
         return cls(key, value)
 
 
@@ -178,7 +180,7 @@ class DataDescription(object):
         SUBHEADER:SIZE, value = size of document
         SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
         ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
-        META = ^ #META: [^\n]*
+        META = ^( )*#META: [^\n]*
 
     """
 
@@ -196,11 +198,41 @@ class DataDescription(object):
             "".join(map(str, list(self.subheaders) + [self.meta]))
         )
 
+    def __repr__(self):
+        return str(self)
+
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
             self.fields == other.fields and \
             set(self.subheaders) == set(other.subheaders) and \
             self.meta == other.meta
 
-    def parse(cls, d):
-        pass
+    @classmethod
+    def parse(cls, header):
+        prefix = "# "
+        if not header.startswith(prefix):
+            raise ValueError(
+                "Header {} should start with {}".format(header, prefix))
+
+        fields_subheaders_and_meta = header[len(prefix):].split("#META: ", 1)
+        fields_subheaders = fields_subheaders_and_meta[0]
+        meta = None if len(fields_subheaders_and_meta) == 1 else \
+            fields_subheaders_and_meta[1]
+        meta = DataDescriptionSubheader("META", meta)
+
+        fields_and_subheaders = fields_subheaders.rstrip().split(
+            DataDescriptionSubheader.PREFIX)
+        print(fields_and_subheaders[0].split(cls.DELIMITER))
+        fields = fields_and_subheaders[0]
+        if fields:
+            fields = [Field.parse(f) for f in fields.split(cls.DELIMITER)]
+        else:
+            fields = ()
+        subheaders = [] if len(fields_and_subheaders) == 1 else \
+            fields_and_subheaders[1:]
+        subheaders = [DataDescriptionSubheader.parse(s) for s in subheaders]
+
+        print(fields)
+        print(subheaders)
+        print(meta)
+        return DataDescription(fields=fields, subheaders=subheaders, meta=meta)
