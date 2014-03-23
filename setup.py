@@ -37,6 +37,11 @@ setup(
     url="https://github.com/pavlov99/tabtool",
     description="Utility to operate with tab separated files",
     long_description=read('README.rst'),
+    entry_points={
+        "console_scripts": [
+            'tcat = tabtool.scripts:cat',
+        ]
+    },
 
     # Full list:
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
