@@ -257,6 +257,15 @@ class DataDescription(object):
         for s in subheaders:
             s.__init__(s.key, s.value)
 
-        d = DataDescription(fields=fields, subheaders=subheaders, meta=meta)
-        print(repr(d))
+        fields_set = {f.title for f in fields}
+        ordered_fields_set = {
+            f.title for s in subheaders
+            if isinstance(s, DataDescriptionSubheaderOrder)
+            for f in s.ordered_fields
+        }
+        if not ordered_fields_set <= fields_set:
+            raise ValueError(
+                "Ordered fields {} should be subset of fields {}".format(
+                    ordered_fields_set, fields_set))
+
         return DataDescription(fields=fields, subheaders=subheaders, meta=meta)

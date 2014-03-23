@@ -368,6 +368,6 @@ class TestDataDescription(unittest.TestCase):
         with self.assertRaises(ValueError):
             DataDescription.parse("# a b #SIZE: 1 ##ORDER: a:asc")
 
-        DataDescription.parse("# a #ORDER: b")
+        DataDescription.parse("# a b #ORDER: b:asc")
         with self.assertRaises(ValueError):
             DataDescription.parse("# a #ORDER: b:asc")
