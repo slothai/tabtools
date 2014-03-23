@@ -1,4 +1,6 @@
-from .utils import Choices
+from drugs.enum import Choices
+from drugs.mixins import Proxy, ProxyMeta
+from . import six
 
 
 class Field(object):
@@ -132,21 +134,22 @@ class OrderedField(object):
         return OrderedField(*args)
 
 
-class DataDescriptionSubheader(object):
+@six.add_metaclass(ProxyMeta)
+class DataDescriptionSubheader(Proxy):
 
     """ Subheader of file."""
 
     PREFIX = " #"
 
     def __init__(self, key, value):
-        self.key = key
+        self.key = key.lower()
         self.value = value
 
     def __hash__(self):
         return hash((self.key, self.value))
 
     def __str__(self):
-        return "{}{}: {}".format(self.PREFIX, self.key, self.value)
+        return "{}: {}".format(self.key.upper(), self.value)
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
@@ -186,6 +189,8 @@ class DataDescription(object):
 
     DELIMITERS = (",", " ", "\t")
     DELIMITER = " "
+    # FIELD_DELIMITER
+    # SUBHEADER_PREFIX
 
     def __init__(self, fields=None, subheaders=None, meta=None):
         self.fields = tuple(fields or ())
