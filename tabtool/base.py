@@ -185,10 +185,9 @@ class DataDescription(object):
 
     """
 
-    DELIMITERS = (",", " ", "\t")
     DELIMITER = " "
+    PREFIX = "# "
     SUBHEADER_PREFIX = " #"
-    # FIELD_DELIMITER
 
     def __init__(self, fields=None, subheaders=None, meta=None):
         self.fields = tuple(fields or ())
@@ -196,11 +195,10 @@ class DataDescription(object):
         self.meta = meta
 
     def __str__(self):
-        return "# {}{}".format(
-            self.DELIMITER.join(map(str, self.fields)),
-            self.SUBHEADER_PREFIX.join(
-                map(str, list(self.subheaders) + [self.meta])
-            )
+        return self.PREFIX + "".join(
+            [self.DELIMITER.join(map(str, self.fields))] +
+            map(lambda s: self.SUBHEADER_PREFIX + str(s),
+                list(self.subheaders) + [self.meta])
         )
 
     def __repr__(self):
@@ -214,12 +212,11 @@ class DataDescription(object):
 
     @classmethod
     def parse(cls, header):
-        prefix = "# "
-        if not header.startswith(prefix):
+        if not header.startswith(cls.PREFIX):
             raise ValueError(
-                "Header {} should start with {}".format(header, prefix))
+                "Header {} should start with {}".format(header, cls.PREFIX))
 
-        fields_subheaders_and_meta = header[len(prefix):].split("#META: ", 1)
+        fields_subheaders_and_meta = header[len(cls.PREFIX):].split("#META: ", 1)
         fields_subheaders = fields_subheaders_and_meta[0]
         meta = None if len(fields_subheaders_and_meta) == 1 else \
             fields_subheaders_and_meta[1]
