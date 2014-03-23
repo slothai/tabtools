@@ -4,6 +4,7 @@ from ..base import (
     DataDescription,
     DataDescriptionSubheader,
     DataDescriptionSubheaderOrder,
+    DataDescriptionSubheaderSize,
     Field,
     OrderedField,
 )
@@ -253,6 +254,15 @@ class TestDataDescriptionSubheaderOrder(unittest.TestCase):
         self.assertEqual(self.subheader, subheader)
 
 
+class TestDataDescriptionSubheaderSize(unittest.TestCase):
+    def test_init_value(self):
+        subheader1 = DataDescriptionSubheaderSize("size", 1)
+        subheader2 = DataDescriptionSubheaderSize("size", "1")
+        self.assertEqual(subheader1.value, 1)
+        self.assertEqual(subheader2.value, 1)
+        self.assertEqual(subheader1, subheader2)
+
+
 class TestDataDescription(unittest.TestCase):
     def setUp(self):
         self.fields = (
@@ -261,8 +271,8 @@ class TestDataDescription(unittest.TestCase):
             Field("c"),
         )
         self.subheaders = (
-            DataDescriptionSubheader("SIZE", 1),
-            DataDescriptionSubheader("ORDER", "c:asc a:desc:numeric"),
+            DataDescriptionSubheaderSize("SIZE", 1),
+            DataDescriptionSubheaderOrder("ORDER", "c:asc a:desc:numeric"),
         )
         meta = "Data description and licence could be here. Even #META: tags!"
         self.meta = DataDescriptionSubheader("META", meta)
