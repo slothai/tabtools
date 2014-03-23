@@ -1,5 +1,6 @@
 ﻿*.egg-info
 *.egg-info/
+.env
 *.py[co]
 .ropeproject
 .tox
