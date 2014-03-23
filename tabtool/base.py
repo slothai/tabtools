@@ -1,3 +1,4 @@
+""" Base package classes."""
 from drugs.enum import Choices
 from drugs.mixins import Proxy, ProxyMeta
 from . import six
@@ -43,6 +44,11 @@ class Field(object):
 
     @classmethod
     def parse(cls, field):
+        """ Parse Field from given string.
+
+        :return Field:
+
+        """
         if field.endswith(":"):
             raise ValueError("field does not have type: {}".format(field))
 
@@ -91,6 +97,11 @@ class OrderedField(object):
 
     @property
     def sort_flag(self):
+        """ Sort flag for unit sort function.
+
+        :return str:
+
+        """
         flag = ""
         if self.sort_type is not None:
             flag += self.sort_type
@@ -111,6 +122,11 @@ class OrderedField(object):
 
     @classmethod
     def parse(cls, ordered_field):
+        """ Parse OrderedField from given string.
+
+        :return OrderedField:
+
+        """
         if ordered_field.endswith(":"):
             raise ValueError(
                 "OrderedField does not have type: {}".format(ordered_field))
@@ -161,11 +177,19 @@ class DataDescriptionSubheader(Proxy):
 
     @classmethod
     def parse(cls, subheader):
+        """ Parse subheader from given string.
+
+        :return DataDescriptionSubheader:
+
+        """
         key, value = subheader.split(": ", 1)
         return cls(key, value)
 
 
 class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
+
+    """ Subheader for fields order information."""
+
     def __init__(self, key, value):
         super(DataDescriptionSubheaderOrder, self).__init__(key, value)
         self.ordered_fields = [
@@ -175,6 +199,9 @@ class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
 
 
 class DataDescriptionSubheaderSize(DataDescriptionSubheader):
+
+    """ Subheader for file size information."""
+
     def __init__(self, key, value):
         value = int(value)
         super(DataDescriptionSubheaderSize, self).__init__(key, value)
@@ -186,14 +213,14 @@ class DataDescription(object):
 
     Data header has following format:
 
-        ^# (<FIELD>( <FIELD>)*)?(<SUBHEADER>)*(<META>)?
+    ^# (<FIELD>( <FIELD>)*)?(<SUBHEADER>)*(<META>)?
 
-        FIELD = ^<str>field_title(:<str>field_type)?$
-        SUBHEADER = ^ #<subheader_key>: <subheader_value>$
-        SUBHEADER:SIZE, value = size of document
-        SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
-        ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
-        META = ^( )*#META: [^\n]*
+    FIELD = ^<str>field_title(:<str>field_type)?$
+    SUBHEADER = ^ #<subheader_key>: <subheader_value>$
+    SUBHEADER:SIZE, value = size of document
+    SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
+    ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
+    META = ^( )*#META: [^n]*
 
     """
 
@@ -232,6 +259,11 @@ class DataDescription(object):
 
     @classmethod
     def parse(cls, header):
+        """ Parse string into DataDescription object.
+
+        :return DataDescription:
+
+        """
         if not header.startswith(cls.PREFIX):
             raise ValueError(
                 "Header {} should start with {}".format(header, cls.PREFIX))

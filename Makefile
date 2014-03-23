@@ -43,6 +43,11 @@ upload:
 test: clean
 	NOSE_REDNOSE=1 && $(BIN)/nosetests
 
+.PHONY: lint
+# target: lint - audit code
+lint:
+	@tox -e pylama
+
 $(ENV):
 	virtualenv --no-site-packages .env
 	$(ENV)/bin/pip install -r requirements.txt
