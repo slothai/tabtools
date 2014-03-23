@@ -141,6 +141,8 @@ class DataDescriptionSubheader(Proxy):
     """ Subheader of file."""
 
     def __init__(self, key, value):
+        if not key.isalnum():
+            raise ValueError("Key {} is not alphanumeric".format(key))
         self.key = key.lower()
         self.value = value
 
@@ -205,10 +207,13 @@ class DataDescription(object):
         self.meta = meta
 
     def __str__(self):
+        subheaders = list(self.subheaders)
+        if self.meta is not None:
+            subheaders.append(self.meta)
+
         return self.PREFIX + "".join(
             [self.DELIMITER.join(map(str, self.fields))] +
-            map(lambda s: self.SUBHEADER_PREFIX + str(s),
-                list(self.subheaders) + [self.meta])
+            map(lambda s: self.SUBHEADER_PREFIX + str(s), subheaders)
         )
 
     def __repr__(self):
@@ -235,25 +240,23 @@ class DataDescription(object):
             "#META: ", 1)
         fields_subheaders = fields_subheaders_and_meta[0]
         meta = None if len(fields_subheaders_and_meta) == 1 else \
-            fields_subheaders_and_meta[1]
-        meta = DataDescriptionSubheader("META", meta)
+            DataDescriptionSubheader("META", fields_subheaders_and_meta[1])
 
         fields_and_subheaders = fields_subheaders.rstrip().split(
             cls.SUBHEADER_PREFIX)
-        print(fields_and_subheaders[0].split(cls.DELIMITER))
-        fields = fields_and_subheaders[0]
-        if fields:
-            fields = [Field.parse(f) for f in fields.split(cls.DELIMITER)]
-        else:
-            fields = ()
-        subheaders = [] if len(fields_and_subheaders) == 1 else \
-            fields_and_subheaders[1:]
-        subheaders = [DataDescriptionSubheader.parse(s).proxy
-                      for s in subheaders]
+
+        fields = tuple(
+            Field.parse(f) for f in
+            fields_and_subheaders[0].split(cls.DELIMITER) if f
+        )
+
+        subheaders = [
+            DataDescriptionSubheader.parse(s).proxy
+            for s in fields_and_subheaders[1:]
+        ]
         for s in subheaders:
             s.__init__(s.key, s.value)
 
-        print(fields)
-        print(subheaders)
-        print(meta)
+        d = DataDescription(fields=fields, subheaders=subheaders, meta=meta)
+        print(repr(d))
         return DataDescription(fields=fields, subheaders=subheaders, meta=meta)
