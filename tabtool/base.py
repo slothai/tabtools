@@ -213,7 +213,7 @@ class DataDescription(object):
 
         return self.PREFIX + "".join(
             [self.DELIMITER.join(map(str, self.fields))] +
-            map(lambda s: self.SUBHEADER_PREFIX + str(s), subheaders)
+            list(map(lambda s: self.SUBHEADER_PREFIX + str(s), subheaders))
         )
 
     def __repr__(self):
