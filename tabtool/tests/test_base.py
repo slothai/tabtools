@@ -287,6 +287,14 @@ class TestDataDescription(unittest.TestCase):
     def test_str(self):
         self.assertEqual(str(self.data_description), self.header)
 
+    def test_str_no_meta(self):
+        data_description = DataDescription(
+            fields=self.fields,
+            subheaders=self.subheaders,
+        )
+        header = "# a:float b:bool c #SIZE: 1 #ORDER: c:asc a:desc:numeric"
+        self.assertEqual(str(data_description), header)
+
     def test__eq__fields(self):
         data_description = DataDescription(
             fields=self.fields,
