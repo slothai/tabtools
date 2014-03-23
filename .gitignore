@@ -1,7 +1,8 @@
 ﻿*.egg-info
 *.egg-info/
-.env
 *.py[co]
+.coverage
+.env
 .ropeproject
 .tox
 __pycache__
