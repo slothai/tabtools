@@ -32,16 +32,14 @@ class Field(object):
         return isinstance(other, self.__class__) and \
             self.title == other.title and self.type == other.type
 
-    def __repr__(self):
-        return "<{} ({}:{})>".format(
-            self.__class__.__name__, self.title, self.type
-        )
-
     def __str__(self):
         if self.type == self.TYPES.NULL:
             return self.title
         else:
             return "{}:{}".format(self.title, self.type)
+
+    def __repr__(self):
+        return "<{} ({})>".format(self.__class__.__name__, str(self))
 
     @classmethod
     def parse(cls, field):
@@ -108,6 +106,9 @@ class OrderedField(object):
             terms.append(dict(self.SORT_TYPES)[self.sort_type])
         return ":".join(terms)
 
+    def __repr__(self):
+        return "<{} ({})>".format(self.__class__.__name__, str(self))
+
     @classmethod
     def parse(cls, ordered_field):
         if ordered_field.endswith(":"):
@@ -149,6 +150,9 @@ class DataDescriptionSubheader(Proxy):
     def __str__(self):
         return "{}: {}".format(self.key.upper(), self.value)
 
+    def __repr__(self):
+        return "<{} ({})>".format(self.__class__.__name__, str(self))
+
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
             self.key == other.key and self.value == other.value
@@ -166,6 +170,12 @@ class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
             OrderedField.parse(f)
             for f in value.split(DataDescription.DELIMITER)
         ]
+
+
+class DataDescriptionSubheaderSize(DataDescriptionSubheader):
+    def __init__(self, key, value):
+        value = int(value)
+        super(DataDescriptionSubheaderSize, self).__init__(key, value)
 
 
 class DataDescription(object):
@@ -202,7 +212,12 @@ class DataDescription(object):
         )
 
     def __repr__(self):
-        return str(self)
+        return "<{}:\nFields: {}\nSubheaders: {}\nMeta: {}\n>".format(
+            self.__class__.__name__,
+            repr(self.fields),
+            repr(self.subheaders),
+            repr(self.meta)
+        )
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
@@ -216,7 +231,8 @@ class DataDescription(object):
             raise ValueError(
                 "Header {} should start with {}".format(header, cls.PREFIX))
 
-        fields_subheaders_and_meta = header[len(cls.PREFIX):].split("#META: ", 1)
+        fields_subheaders_and_meta = header[len(cls.PREFIX):].split(
+            "#META: ", 1)
         fields_subheaders = fields_subheaders_and_meta[0]
         meta = None if len(fields_subheaders_and_meta) == 1 else \
             fields_subheaders_and_meta[1]
@@ -232,7 +248,10 @@ class DataDescription(object):
             fields = ()
         subheaders = [] if len(fields_and_subheaders) == 1 else \
             fields_and_subheaders[1:]
-        subheaders = [DataDescriptionSubheader.parse(s) for s in subheaders]
+        subheaders = [DataDescriptionSubheader.parse(s).proxy
+                      for s in subheaders]
+        for s in subheaders:
+            s.__init__(s.key, s.value)
 
         print(fields)
         print(subheaders)
