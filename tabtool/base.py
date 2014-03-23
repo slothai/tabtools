@@ -139,8 +139,6 @@ class DataDescriptionSubheader(Proxy):
 
     """ Subheader of file."""
 
-    PREFIX = " #"
-
     def __init__(self, key, value):
         self.key = key.lower()
         self.value = value
@@ -189,8 +187,8 @@ class DataDescription(object):
 
     DELIMITERS = (",", " ", "\t")
     DELIMITER = " "
+    SUBHEADER_PREFIX = " #"
     # FIELD_DELIMITER
-    # SUBHEADER_PREFIX
 
     def __init__(self, fields=None, subheaders=None, meta=None):
         self.fields = tuple(fields or ())
@@ -200,7 +198,9 @@ class DataDescription(object):
     def __str__(self):
         return "# {}{}".format(
             self.DELIMITER.join(map(str, self.fields)),
-            "".join(map(str, list(self.subheaders) + [self.meta]))
+            self.SUBHEADER_PREFIX.join(
+                map(str, list(self.subheaders) + [self.meta])
+            )
         )
 
     def __repr__(self):
@@ -226,7 +226,7 @@ class DataDescription(object):
         meta = DataDescriptionSubheader("META", meta)
 
         fields_and_subheaders = fields_subheaders.rstrip().split(
-            DataDescriptionSubheader.PREFIX)
+            cls.SUBHEADER_PREFIX)
         print(fields_and_subheaders[0].split(cls.DELIMITER))
         fields = fields_and_subheaders[0]
         if fields:

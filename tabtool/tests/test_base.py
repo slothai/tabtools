@@ -199,8 +199,8 @@ class TestDataDescriptionSubheader(unittest.TestCase):
         self.subheader3 = DataDescriptionSubheader("ORDER", "a:asc b:desc")
 
     def test_str(self):
-        self.assertEqual(str(self.subheader1), " #key: value")
-        self.assertEqual(str(self.subheader3), " #ORDER: a:asc b:desc")
+        self.assertEqual(str(self.subheader1), "KEY: value")
+        self.assertEqual(str(self.subheader3), "ORDER: a:asc b:desc")
 
     def test__eq__(self):
         self.assertEqual(self.subheader1, self.subheader2)
@@ -249,8 +249,7 @@ class TestDataDescriptionSubheaderOrder(unittest.TestCase):
         self.assertEqual(self.subheader.ordered_fields, self.ordered_fields)
 
     def test_parse(self):
-        subheader = DataDescriptionSubheaderOrder.parse(
-            str(self.subheader)[len(DataDescriptionSubheaderOrder.PREFIX):])
+        subheader = DataDescriptionSubheaderOrder.parse(str(self.subheader))
         self.assertEqual(self.subheader, subheader)
 
 
