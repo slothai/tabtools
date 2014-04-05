@@ -13,6 +13,9 @@ from ..base import (
 class TestField(unittest.TestCase):
     def test_init(self):
         with self.assertRaises(ValueError):
+            Field("")
+
+        with self.assertRaises(ValueError):
             Field("a", "unknown_type")
 
         with self.assertRaises(ValueError):
