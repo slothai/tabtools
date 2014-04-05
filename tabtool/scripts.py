@@ -14,5 +14,4 @@ def cat():
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     args = parser.parse_args()
     files = FileList(args.files)
-    print(args)
     files("cat")

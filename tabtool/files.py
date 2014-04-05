@@ -1,6 +1,7 @@
 """ Files and streams utility."""
 import os
 import subprocess
+from .base import DataDescription
 
 
 class File(object):
@@ -86,13 +87,19 @@ class FileList(list):
     """ List of Files."""
 
     def __init__(self, files=None):
-        files = map(File, files or [])
+        files = map(lambda f: File(f).proxy, files or [])
         super(FileList, self).__init__(files)
 
     @property
     def descriptors(self):
         """ Return list of file descriptors."""
         return [f.descriptor for f in self]
+
+    @property
+    def header(self):
+        data_description = DataDescription.merge(
+            *[DataDescription.parse(f.header) for f in self])
+        return str(data_description)
 
     def __call__(self, *args, **params):
         command = [
@@ -102,4 +109,5 @@ class FileList(list):
         command.append(subcommand)
         if params.get("is_debug"):
             print(" ".join(command))
+        print(self.header)
         subprocess.call(command)
