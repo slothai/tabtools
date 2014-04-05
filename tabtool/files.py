@@ -96,6 +96,16 @@ class FileList(list):
         return [f.descriptor for f in self]
 
     @property
+    def description(self):
+        """ Get data description.
+
+        :return DataDescription:
+
+        """
+        return DataDescription.merge(
+            *[DataDescription.parse(f.header) for f in self])
+
+    @property
     def header(self):
         """ Get header for files list.
 
@@ -103,9 +113,7 @@ class FileList(list):
         :raise ValueError:
 
         """
-        data_description = DataDescription.merge(
-            *[DataDescription.parse(f.header) for f in self])
-        return str(data_description)
+        return str(self.description)
 
     def __call__(self, *args, **params):
         command = [

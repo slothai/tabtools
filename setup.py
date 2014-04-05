@@ -40,6 +40,7 @@ setup(
     entry_points={
         "console_scripts": [
             'tcat = tabtool.scripts:cat',
+            'tsrt = tabtool.scripts:srt',
         ]
     },
 
