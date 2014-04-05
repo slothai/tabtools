@@ -86,7 +86,6 @@ class FileList(list):
     """ List of Files."""
 
     def __init__(self, files=None):
-        import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
         files = map(File, files or [])
         super(FileList, self).__init__(files)
 

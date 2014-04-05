@@ -62,6 +62,7 @@ class Field(object):
         :param tuple(Field): fields
         :return Field:
         :return ValueError:
+
         """
         if not fields:
             raise ValueError("At least one field is required")
@@ -216,6 +217,7 @@ class DataDescriptionSubheader(Proxy):
         :param tuple(Subheader): subheader
         :return Subheader:
         :return ValueError:
+
         """
         if not subheaders:
             raise ValueError("At least one subheader is required")
@@ -250,6 +252,13 @@ class DataDescriptionSubheaderSize(DataDescriptionSubheader):
 
     @classmethod
     def merge(cls, *subheaders):
+        """ Merge SubheaderSize subheaders.
+
+        :param tuple(DataDescriptionSubheaderSize): subheaders
+        :return DataDescriptionSubheaderSize:
+        :return ValueError:
+
+        """
         subheader = DataDescriptionSubheader.merge(*subheaders).proxy
         subheader.value = sum(x.value for x in subheaders)
         return subheader
@@ -359,6 +368,7 @@ class DataDescription(object):
         :param tuple(DataDescription): dds
         :return DataDescription:
         :return ValueError:
+
         """
         #self.subheaders = tuple(subheaders or ())
         fields = tuple(
