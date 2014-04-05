@@ -205,6 +205,27 @@ class DataDescriptionSubheader(Proxy):
         key, value = subheader.split(": ", 1)
         return cls(key, value)
 
+    @classmethod
+    def merge(cls, *subheaders):
+        """ Merge subheaders with the same name.
+
+        As far as subheader could consist of any information, it needs to be
+        handled manually. By default method return subheader with empty value.
+
+        :param tuple(Subheader): subheader
+        :return Subheader:
+        :return ValueError:
+        """
+        if not subheaders:
+            raise ValueError("At least one subheader is required")
+
+        subheader_keys = {s.key for s in subheaders}
+        if len(subheader_keys) != 1:
+            raise ValueError("Subheaders keys are not equal {} ".format(
+                subheader_keys))
+
+        return DataDescriptionSubheader(subheaders[0].key, "")
+
 
 class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
 
@@ -225,6 +246,12 @@ class DataDescriptionSubheaderSize(DataDescriptionSubheader):
     def __init__(self, key, value):
         value = int(value)
         super(DataDescriptionSubheaderSize, self).__init__(key, value)
+
+    @classmethod
+    def merge(cls, *subheaders):
+        subheader = DataDescriptionSubheader.merge(*subheaders)
+        subheader.value = sum(x.value for x in subheaders)
+        return subheader
 
 
 class DataDescription(object):

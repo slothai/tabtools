@@ -270,6 +270,23 @@ class TestDataDescriptionSubheader(unittest.TestCase):
         with self.assertRaises(ValueError):
             DataDescriptionSubheader.parse("key:value")
 
+    def test_merge(self):
+        self.assertEqual(
+            DataDescriptionSubheader.merge(
+                DataDescriptionSubheader("k", "v1"),
+                DataDescriptionSubheader("k", "v2")
+            ),
+            DataDescriptionSubheader("k", "")
+        )
+
+    def test_merge_error(self):
+        with self.assertRaises(ValueError):
+            DataDescriptionSubheader.merge()
+            DataDescriptionSubheader.merge(
+                DataDescriptionSubheader("k1", "v"),
+                DataDescriptionSubheader("k2", "v")
+            )
+
 
 class TestDataDescriptionSubheaderOrder(unittest.TestCase):
     def setUp(self):
@@ -295,6 +312,15 @@ class TestDataDescriptionSubheaderSize(unittest.TestCase):
         self.assertEqual(subheader1.value, 1)
         self.assertEqual(subheader2.value, 1)
         self.assertEqual(subheader1, subheader2)
+
+    def test_merge(self):
+        self.assertEqual(
+            DataDescriptionSubheaderSize.merge(
+                DataDescriptionSubheaderSize("size", 1),
+                DataDescriptionSubheaderSize("size", 1)
+            ),
+            DataDescriptionSubheader("size", 2)
+        )
 
 
 class TestDataDescription(unittest.TestCase):
