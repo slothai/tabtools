@@ -97,6 +97,12 @@ class FileList(list):
 
     @property
     def header(self):
+        """ Get header for files list.
+
+        :return str: header
+        :raise ValueError:
+
+        """
         data_description = DataDescription.merge(
             *[DataDescription.parse(f.header) for f in self])
         return str(data_description)
