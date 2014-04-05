@@ -6,3 +6,5 @@
 .ropeproject
 .tox
 __pycache__
+build
+dist
