@@ -45,6 +45,40 @@ class TestField(unittest.TestCase):
         with self.assertRaises(ValueError):
             Field.parse("a str")
 
+    def test_merge(self):
+        self.assertEqual(Field.merge(Field("a")), Field("a"))
+        self.assertEqual(Field.merge(Field("a"), Field("a")), Field("a"))
+        self.assertEqual(
+            Field.merge(Field("a", "str"), Field("a")),
+            Field("a")
+        )
+        self.assertEqual(
+            Field.merge(Field("a", "null"), Field("a")),
+            Field("a")
+        )
+        self.assertEqual(
+            Field.merge(Field("a", "str"), Field("a", "str")),
+            Field("a", "str")
+        )
+        self.assertEqual(
+            Field.merge(Field("a", "bool"), Field("a", "int")),
+            Field("a", "int")
+        )
+        self.assertEqual(
+            Field.merge(Field("a", "int"), Field("a", "float")),
+            Field("a", "float")
+        )
+        self.assertEqual(
+            Field.merge(Field("a", "float"), Field("a", "str")),
+            Field("a", "str")
+        )
+
+    def test_merge_error(self):
+        with self.assertRaises(ValueError):
+            Field.merge()
+            Field.merge(Field("a"), Field("b"))
+            Field.merge(Field("a", "str"), Field("b", "str"))
+
 
 class TestOrderedField(unittest.TestCase):
     def test_init(self):

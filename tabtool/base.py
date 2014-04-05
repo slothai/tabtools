@@ -9,10 +9,10 @@ class Field(object):
     """ Field description."""
 
     TYPES = Choices(
-        ("str", "STR"),
+        ("bool", "BOOL"),
         ("int", "INT"),
         ("float", "FLOAT"),
-        ("bool", "BOOL"),
+        ("str", "STR"),
         ("null", "NULL"),
     )
 
@@ -53,6 +53,26 @@ class Field(object):
             raise ValueError("field does not have type: {}".format(field))
 
         return Field(*field.split(":"))
+
+    @classmethod
+    def merge(cls, *fields):
+        """ Merge fields with the same name. Handle result type.
+
+        :param tuple(Field): fields
+        :return Field:
+        :return ValueError:
+        """
+        if not fields:
+            raise ValueError("At least one field is required")
+
+        field_titles = {f.title for f in fields}
+        if len(field_titles) != 1:
+            raise ValueError("Fields titles are not equal {} ".format(
+                field_titles))
+
+        ordered_types = [t[0] for t in cls.TYPES]
+        t = ordered_types[max(ordered_types.index(f.type) for f in fields)]
+        return Field(fields[0].title, t)
 
 
 class OrderedField(object):
