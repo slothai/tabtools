@@ -100,6 +100,6 @@ class FileList(list):
         ]
         subcommand = " ".join(['LC_ALL=C'] + list(args) + self.descriptors)
         command.append(subcommand)
-        if params.get("id_debug"):
+        if params.get("is_debug"):
             print(" ".join(command))
         subprocess.call(command)
