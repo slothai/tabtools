@@ -319,7 +319,7 @@ class TestDataDescriptionSubheaderSize(unittest.TestCase):
                 DataDescriptionSubheaderSize("size", 1),
                 DataDescriptionSubheaderSize("size", 1)
             ),
-            DataDescriptionSubheader("size", 2)
+            DataDescriptionSubheaderSize("size", 2)
         )
 
 
@@ -431,3 +431,39 @@ class TestDataDescription(unittest.TestCase):
         DataDescription.parse("# a b #ORDER: b:asc")
         with self.assertRaises(ValueError):
             DataDescription.parse("# a #ORDER: b:asc")
+
+    def test_merge(self):
+        dd1 = DataDescription(
+            fields=(
+                Field("a", "int"),
+                Field("b", "float"),
+            ),
+            subheaders=(
+                DataDescriptionSubheaderSize("SIZE", 1),
+                DataDescriptionSubheaderOrder("ORDER", "a:asc b:desc:numeric"),
+            ),
+            meta="meta1"
+        )
+
+        dd2 = DataDescription(
+            fields=(
+                Field("a", "str"),
+                Field("b", "bool"),
+            ),
+            subheaders=(
+                DataDescriptionSubheaderSize("SIZE", 1),
+                DataDescriptionSubheaderOrder("ORDER", "a:desc"),
+            ),
+            meta="meta1"
+        )
+
+        dd_expected = DataDescription(
+            fields=(
+                Field("a", "str"),
+                Field("b", "float"),
+            ),
+            subheaders=(
+                DataDescriptionSubheaderSize("SIZE", 2),
+            ),
+        )
+        self.assertEqual(DataDescription.merge(dd1, dd2), dd_expected)

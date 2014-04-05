@@ -1,6 +1,7 @@
 """ Base package classes."""
 from drugs.enum import Choices
 from drugs.mixins import Proxy, ProxyMeta
+import itertools
 from . import six
 
 
@@ -249,7 +250,7 @@ class DataDescriptionSubheaderSize(DataDescriptionSubheader):
 
     @classmethod
     def merge(cls, *subheaders):
-        subheader = DataDescriptionSubheader.merge(*subheaders)
+        subheader = DataDescriptionSubheader.merge(*subheaders).proxy
         subheader.value = sum(x.value for x in subheaders)
         return subheader
 
@@ -348,3 +349,28 @@ class DataDescription(object):
                     ordered_fields_set, fields_set))
 
         return DataDescription(fields=fields, subheaders=subheaders, meta=meta)
+
+    @classmethod
+    def merge(cls, *dds):
+        """ Merge Data Descriptions.
+
+        Fields should be in the same order, number of fields should be equal
+
+        :param tuple(DataDescription): dds
+        :return DataDescription:
+        :return ValueError:
+        """
+        #self.subheaders = tuple(subheaders or ())
+        fields = tuple(
+            Field.merge(*fields) for fields in
+            six.moves.zip_longest(*(dd.fields for dd in dds))
+        )
+        key = lambda x: x.key
+        subheaders = [
+            DataDescriptionSubheader(k, "").proxy.merge(*list(v))
+            for k, v in itertools.groupby(
+                sorted((x for dd in dds for x in dd.subheaders), key=key), key
+            )
+        ]
+        subheaders = tuple(x for x in subheaders if x.value)
+        return DataDescription(fields=fields, subheaders=subheaders)
