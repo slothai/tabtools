@@ -41,7 +41,7 @@ upload:
 .PHONY: test
 # target: test - Runs tests
 test: clean
-	NOSE_REDNOSE=1 && $(BIN)/nosetests
+	NOSE_REDNOSE=1 $(BIN)/nosetests
 
 .PHONY: lint
 # target: lint - audit code
