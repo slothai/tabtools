@@ -55,7 +55,7 @@ class StdinFile(StreamFile):
 
     """ Stdin input stream."""
 
-    is_stdin = True
+    pass
 
 
 class RegularFile(File):
@@ -86,7 +86,8 @@ class FileList(list):
     """ List of Files."""
 
     def __init__(self, files=None):
-        files = files or []
+        import ipdb; ipdb.set_trace()  # XXX BREAKPOINT
+        files = map(File, files or [])
         super(FileList, self).__init__(files)
 
     @property
@@ -94,12 +95,12 @@ class FileList(list):
         """ Return list of file descriptors."""
         return [f.descriptor for f in self]
 
-    def __call__(self, *args):
+    def __call__(self, *args, **params):
         command = [
-            'bash', '-o', 'pipefail', '-o', 'errexit', '-c', 'LC_ALL=C',
+            'bash', '-o', 'pipefail', '-o', 'errexit', '-c',
         ]
-        command.extend(args)
-        command.extend(self.descriptors)
-        #print(command)
-        #print(" ".join(command))
+        subcommand = " ".join(['LC_ALL=C'] + list(args) + self.descriptors)
+        command.append(subcommand)
+        if params.get("id_debug"):
+            print(" ".join(command))
         subprocess.call(command)
