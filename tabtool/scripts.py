@@ -1,9 +1,11 @@
 """ Scripts of tool."""
 import argparse
 import itertools
+import sys
 
 from .base import OrderedField
-from .files import FileList
+from .files import FileList, StreamFile
+from .utils import has_stdin
 
 
 def cat():
@@ -63,6 +65,9 @@ def pretty():
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     args = parser.parse_args()
     files = FileList(args.files)
+    if has_stdin():
+        files.append(StreamFile(sys.stdin))
+
     description = files.description
     column_width = [len(str(f)) for f in description.fields]
 
