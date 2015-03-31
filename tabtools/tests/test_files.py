@@ -8,7 +8,7 @@ class TestFile(unittest.TestCase):
         self.f = File(open('tabtools/tests/files/sample1.tsv'))
 
     def test_descriptor(self):
-        self.assertEqual(self.f.descriptor, "/dev/fd/3")
+        self.assertTrue(self.f.descriptor.startswith("/dev/fd/3"))
 
     def test_proxy(self):
         pass
