@@ -1,7 +1,9 @@
 """ Files and streams utility."""
 import os
+import sys
 import subprocess
 from .base import DataDescription
+from .utils import has_stdin, cached_property
 
 
 class File(object):
@@ -89,19 +91,26 @@ class FileList(list):
     """ List of Files."""
 
     def __init__(self, files=None):
-        files = [File(f).proxy for f in files or []]
-        super(FileList, self).__init__(files)
+        files = files or []
+        if has_stdin():
+            files.append(sys.stdin)
+        super(FileList, self).__init__([File(f).proxy for f in files])
 
     @property
     def descriptors(self):
         """ Return list of file descriptors."""
         return [f.descriptor for f in self]
 
-    @property
+    @cached_property
     def description(self):
         """ Get data description.
 
-        :return DataDescription:
+        .. note: cache property to allow multiple header access in case of
+        stream files.
+
+        Return
+        ------
+        DataDescription
 
         """
         return DataDescription.merge(
@@ -125,4 +134,6 @@ class FileList(list):
         command.append(subcommand)
         if kwargs.get("is_debug"):
             print(" ".join(command))
+        sys.stdout.write(self.header + '\n')
+        sys.stdout.flush()
         subprocess.call(command)

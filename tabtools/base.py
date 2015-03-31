@@ -20,9 +20,6 @@ class Field(object):
         if not title:
             raise ValueError("Title should exist")
 
-        if " " in title:
-            raise ValueError("Field title has space: {}".format(title))
-
         if _type is not None and _type not in self.TYPES:
             raise ValueError("Unknown type {}".format(_type))
 
@@ -269,7 +266,7 @@ class DataDescription(object):
 
     Data header has following format:
 
-    ^# (<FIELD>( <FIELD>)*)?(<SUBHEADER>)*(<META>)?
+    ^# (<FIELD>(\t<FIELD>)*)?(<SUBHEADER>)*(<META>)?
 
     FIELD = ^<str>field_title(:<str>field_type)?$
     SUBHEADER = ^ #<subheader_key>: <subheader_value>$
@@ -280,7 +277,7 @@ class DataDescription(object):
 
     """
 
-    DELIMITER = " "
+    DELIMITER = "\t"
     PREFIX = "# "
     SUBHEADER_PREFIX = " #"
 

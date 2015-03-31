@@ -1,9 +1,10 @@
 """ Scripts of tool."""
 import argparse
 import itertools
+import tempfile
 import sys
 
-from .base import OrderedField
+from .base import OrderedField, DataDescription
 from .files import FileList, StreamFile
 from .utils import has_stdin
 
@@ -22,9 +23,6 @@ def cat():
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     args = parser.parse_args()
     files = FileList(args.files)
-    if has_stdin():
-        files.append(StreamFile(sys.stdin))
-    print(files.header)
     files("cat")
 
 
@@ -56,45 +54,32 @@ def srt():
 def pretty():
     """ Prettify output.
 
-    tpretty file
+    Uses sys.stdin only
     tcat file | tpretty
 
     """
-    parser = argparse.ArgumentParser(
-        add_help=True,
-        description="Prettify files and print on the standard output"
-    )
-    parser.add_argument(
-        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
-    args = parser.parse_args()
-    files = FileList(args.files)
-    if has_stdin():
-        files.append(StreamFile(sys.stdin))
+    header = sys.stdin.readline()
+    fields = DataDescription.parse(header).fields
+    column_widths = [len(str(field)) for field in fields]
 
-    description = files.description
-    column_width = [len(str(f)) for f in description.fields]
-
-    for f in files:
-        for lindex, line in enumerate(f.fd):
-            if lindex == 0:
-                continue
+    file_name = tempfile.mkstemp()[1]
+    with open(file_name, 'w') as f:
+        for line in sys.stdin:
             for findex, field in enumerate(line.rstrip('\n').split()):
-                column_width[findex] = max(column_width[findex], len(field))
+                column_widths[findex] = max(column_widths[findex], len(field))
+            f.write(line)
 
-    column_width = [x + 2 for x in column_width]
+    column_widths = [x + 2 for x in column_widths]
     print("|".join([
         (" {} ".format(str(f))).ljust(x)
-        for x, f in itertools.izip(column_width, description.fields)
+        for x, f in itertools.izip(column_widths, fields)
     ]))
-    print("+".join(["-" * x for x in column_width]))
-    for f in files:
-        f.fd.seek(0)
-        for lindex, line in enumerate(f.fd):
-            if lindex == 0:
-                continue
+    print("+".join(["-" * x for x in column_widths]))
+    with open(file_name, 'r') as f:
+        for line in f:
             print("|".join([
                 (" {} ".format(str(field))).ljust(x)
                 for x, field in itertools.izip(
-                    column_width, line.rstrip('\n').split()
+                    column_widths, line.rstrip('\n').split()
                 )
             ]))
