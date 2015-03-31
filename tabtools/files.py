@@ -73,7 +73,12 @@ class RegularFile(File):
 
     @property
     def descriptor(self):
-        """ Return regular file descriptor."""
+        """ Return regular file descriptor.
+
+        Regular file has header, descriptor consists of lines starting
+        from second.
+
+        """
         os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
         return "<( tail -qn+2 {} )".format(
             super(RegularFile, self).descriptor)
