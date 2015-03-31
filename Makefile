@@ -36,7 +36,9 @@ register:
 .PHONY: upload
 # target: upload - Upload module on PyPi
 upload:
-	@python setup.py sdist upload || echo 'Upload already'
+	@python setup.py sdist
+	@python setup.py bdist_wheel
+	@python setup.py upload || echo 'Upload already'
 
 .PHONY: test
 # target: test - Runs tests
