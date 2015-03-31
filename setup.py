@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import os
 from setuptools import setup, find_packages
-from tabtool import version
+from tabtools import version
 
 # Import multiprocessing to prevent test run problem. In case of nosetests
 # (not nose2) there is probles, for details see:
@@ -23,7 +23,7 @@ install_requires = [l for l in read('requirements.txt').split('\n')
                     if l and not l.startswith('#')]
 
 setup(
-    name="tabtool",
+    name="tabtools",
     version=version,
     packages=find_packages(),
     # test_suite="nose2.collector.collector",
@@ -34,14 +34,14 @@ setup(
     # metadata for upload to PyPI
     author="Kirill Pavlov",
     author_email="kirill.pavlov@phystech.edu",
-    url="https://github.com/pavlov99/tabtool",
+    url="https://github.com/pavlov99/tabtools",
     description="Utility to operate with tab separated files",
     long_description=read('README.rst'),
     entry_points={
         "console_scripts": [
-            'tcat = tabtool.scripts:cat',
-            'tsrt = tabtool.scripts:srt',
-            'tpretty = tabtool.scripts:pretty',
+            'tcat = tabtools.scripts:cat',
+            'tsrt = tabtools.scripts:srt',
+            'tpretty = tabtools.scripts:pretty',
         ]
     },
 

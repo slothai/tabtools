@@ -1,27 +1,27 @@
-.. image:: https://travis-ci.org/pavlov99/tabtool.png
-    :target: https://travis-ci.org/pavlov99/tabtool
+.. image:: https://travis-ci.org/pavlov99/tabtools.png
+    :target: https://travis-ci.org/pavlov99/tabtools
     :alt: Build Status
 
-.. image:: https://coveralls.io/repos/pavlov99/tabtool/badge.png
-    :target: https://coveralls.io/r/pavlov99/tabtool
+.. image:: https://coveralls.io/repos/pavlov99/tabtools/badge.png
+    :target: https://coveralls.io/r/pavlov99/tabtools
     :alt: Coverage Status
 
-.. image:: https://pypip.in/v/tabtool/badge.png
-    :target: https://crate.io/packages/tabtool
+.. image:: https://pypip.in/v/tabtools/badge.png
+    :target: https://crate.io/packages/tabtools
     :alt: Version
 
-.. image:: https://pypip.in/d/tabtool/badge.png
-    :target: https://crate.io/packages/tabtool
+.. image:: https://pypip.in/d/tabtools/badge.png
+    :target: https://crate.io/packages/tabtools
     :alt: Downloads
 
-Documentation: http://tabtool.readthedocs.org
+Documentation: http://tabtools.readthedocs.org
 
 Install
 -------
 
 .. code-block:: python
 
-    pip install tabtool
+    pip install tabtools
 
 Tests
 -----

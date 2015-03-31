@@ -1,8 +1,7 @@
 """ Base package classes."""
-from drugs.enum import Choices
-from drugs.mixins import Proxy, ProxyMeta
-import itertools
 from . import six
+from .utils import Choices, Proxy, ProxyMeta
+import itertools
 
 
 class Field(object):
@@ -370,7 +369,7 @@ class DataDescription(object):
         :return ValueError:
 
         """
-        #self.subheaders = tuple(subheaders or ())
+        # self.subheaders = tuple(subheaders or ())
         fields = tuple(
             Field.merge(*fields) for fields in
             six.moves.zip_longest(*(dd.fields for dd in dds))
