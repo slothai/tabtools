@@ -38,25 +38,22 @@ class File(object):
 
 class StreamFile(File):
 
-    """ General input stream."""
+    """ General input stream.
+
+    .. note:Stream file could not be read twice.
+
+    """
 
     @property
     def header(self):
         """ Return stream file header."""
         header = ""
         while True:
-            char = os.read(self.fd.fileno(), 1)
+            char = os.read(self.fd.fileno(), 1).decode('utf8')
             if char is None or char == '\n':
                 break
             header += char
         return header
-
-
-class StdinFile(StreamFile):
-
-    """ Stdin input stream."""
-
-    pass
 
 
 class RegularFile(File):
@@ -78,7 +75,7 @@ class RegularFile(File):
     def descriptor(self):
         """ Return regular file descriptor."""
         os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
-        return "<(tail -qn+2 {} || kill $$)".format(
+        return "<( tail -qn+2 {} )".format(
             super(RegularFile, self).descriptor)
 
 
@@ -87,7 +84,7 @@ class FileList(list):
     """ List of Files."""
 
     def __init__(self, files=None):
-        files = map(lambda f: File(f).proxy, files or [])
+        files = [File(f).proxy for f in files or []]
         super(FileList, self).__init__(files)
 
     @property
@@ -115,13 +112,12 @@ class FileList(list):
         """
         return str(self.description)
 
-    def __call__(self, *args, **params):
+    def __call__(self, *args, **kwargs):
         command = [
             'bash', '-o', 'pipefail', '-o', 'errexit', '-c',
         ]
         subcommand = " ".join(['LC_ALL=C'] + list(args) + self.descriptors)
         command.append(subcommand)
-        if params.get("is_debug"):
+        if kwargs.get("is_debug"):
             print(" ".join(command))
-        print(self.header)
         subprocess.call(command)

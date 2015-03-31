@@ -22,6 +22,9 @@ def cat():
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     args = parser.parse_args()
     files = FileList(args.files)
+    if has_stdin():
+        files.append(StreamFile(sys.stdin))
+    print(files.header)
     files("cat")
 
 
