@@ -41,6 +41,7 @@ setup(
         "console_scripts": [
             'tcat = tabtools.scripts:cat',
             'tsrt = tabtools.scripts:srt',
+            'tawk = tabtools.scripts:awk',
             'tpretty = tabtools.scripts:pretty',
         ]
     },

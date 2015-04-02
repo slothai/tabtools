@@ -5,8 +5,8 @@ import tempfile
 import sys
 
 from .base import OrderedField, DataDescription
-from .files import FileList, StreamFile
-from .utils import has_stdin
+from .files import FileList
+from .awk import AWKProgram
 
 
 def cat():
@@ -49,6 +49,25 @@ def srt():
         for f in order
     ]
     files("sort", *options)
+
+
+def awk():
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Perform a map operation on all FILE(s)"
+        "and write result to standard output."
+    )
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument('-o', '--output', action="append", help="Output fields",
+        default=[])
+    parser.add_argument('-f', '--filter', action="append", help="Filter expression")
+    args = parser.parse_args()
+    files = FileList(args.files)
+    program = AWKProgram(files.description.fields, args.filter, args.output)
+
+    sys.stdout.write("%s\n" % program)
+    files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
 def pretty():
