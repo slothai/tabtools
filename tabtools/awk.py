@@ -36,11 +36,15 @@ class AWKProgram(object):
         """
         self.fields = fields
         self.filters = filters or []
-        self.output_expression = output_expressions or []
+        self.output_expressions = output_expressions or []
         self.context = {
-            field.title: '${}'.format(index + 1)
+            field.title: ('${}'.format(index + 1), None)
             for index, field in enumerate(self.fields)
         }
+        print(self.context)
+        code = AWKNodeTransformer(self.context).visit(ast.parse(
+            "; ".join(self.output_expressions)))
+        print(code)
 
     def __str__(self):
         return "'{print $0}'"
@@ -74,11 +78,34 @@ class AWKProgram(object):
         return output
 
 
-class AWKNodeTransformer(ast.NodeTransformer):
+class Expression(ast.NodeTransformer):
 
-    def __init__(self, context=None):
-        super(AWKNodeTransformer, self).__init__()
+    """ Expression class.
+
+    Class is used to control expression types
+
+    """
+
+    def __init__(self, value, title=None, _type=None, context=None):
+        self.title = title
+        self._type = _type
+        self.value = value
         self.context = context or {}
+
+    def __str__(self):
+        if self.title is not None:
+            return "{} = {}".format(self.title, self.value)
+        else:
+            return str(self.value)
+
+    def __repr__(self):
+        return "<{}: {}>".format(self.__class__.__name__, self.value)
+
+    @classmethod
+    def from_str(cls, value, context=None):
+        obj = cls(None, context=context)
+        expressions =  obj.visit(ast.parse(value))
+        return expressions
 
     def generic_visit(self, node):
         raise ValueError("Class is not supported {}".format(node))
@@ -99,19 +126,28 @@ class AWKNodeTransformer(ast.NodeTransformer):
                 statement = ast.Assign(
                     targets=[statement.value], value=statement.value)
 
-            transformed_statement = self.visit(statement)
-            output.append(transformed_statement)
+            output.extend(self.visit(statement))
         return output
 
     def visit_Assign(self, node):
+        """ Return list of expressions.
+
+        in case of code x = F(expr), generate two expressions
+        __var = expr
+        x = F(__var)
+
+        """
         target_name = node.targets[0].id
-        value = self.visit(node.value)
-        self.context[target_name] = (target_name, None)
-        return "{} = {};".format(target_name, value)
+        values = self.visit(node.value)
+        if target_name not in self.context:
+            # add variable to context, it is already defined, {'var': 'var'}
+            self.context[target_name] = Expression(target_name)
+        values[-1].title = target_name
+        return values
 
     def visit_Name(self, node):
         if node.id in self.context:
-            return self.context[node.id][0]
+            return [self.context[node.id]]
         else:
             raise ValueError("Variable {} not in context".format(node.id))
 
@@ -125,13 +161,30 @@ class AWKNodeTransformer(ast.NodeTransformer):
         }
         op = type(node.op)
         if op in options:
-            return "{} {} {}".format(
-                self.visit(node.left),
-                options[op],
-                self.visit(node.right)
+            output = []
+            lefts = self.visit(node.left)
+            rights = self.visit(node.right)
+
+            for left in lefts[:-1]:
+                output.append(left)
+                self.context.update(left.context)
+
+            for right in rights[:-1]:
+                output.append(right)
+                self.context.update(right.context)
+
+            expr = Expression(
+                "{} {} {}".format(
+                    lefts[-1].value,
+                    options[op],
+                    rights[-1].value
+                ),
+                context=self.context
             )
+            output.append(expr)
+            return output
         else:
             raise ValueError("Not Supported binary operation {}".format(op.__name__))
 
     def visit_Num(self, node):
-        return node.n
+        return [Expression(node.n)]
