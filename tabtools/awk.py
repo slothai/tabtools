@@ -38,16 +38,20 @@ class AWKProgram(object):
         self.filters = filters or []
         self.output_expressions = output_expressions or []
         self.context = {
-            field.title: ('${}'.format(index + 1), None)
+            field.title: Expression('${}'.format(index + 1))
             for index, field in enumerate(self.fields)
         }
-        print(self.context)
-        code = AWKNodeTransformer(self.context).visit(ast.parse(
-            "; ".join(self.output_expressions)))
-        print(code)
 
     def __str__(self):
-        return "'{print $0}'"
+        result = "'{\n"
+        output = Expression.from_str(
+            "; ".join(self.output_expressions),
+            self.context
+        )
+        result += "".join(["{};\n".format(str(o)) for o in output])
+        result += "print " + ", ".join([o.title for o in output])
+        result += "\n}'"
+        return result
 
     @classmethod
     def get_moving_average_template(cls, window_size):
@@ -174,7 +178,7 @@ class Expression(ast.NodeTransformer):
                 self.context.update(right.context)
 
             expr = Expression(
-                "{} {} {}".format(
+                "({}) {} ({})".format(
                     lefts[-1].value,
                     options[op],
                     rights[-1].value
