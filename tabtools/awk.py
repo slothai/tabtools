@@ -30,6 +30,9 @@ class AWKProgram(object):
         output_expressions: list, optional
         filters: list, optional
 
+        context: dict
+            title -> (index, [type]), if there is no type, str is used.
+
         """
         self.fields = fields
         self.filters = filters or []
@@ -40,7 +43,7 @@ class AWKProgram(object):
         }
 
     def __str__(self):
-        return "'{print $1, $2}'"
+        return "'{print $0}'"
 
     @classmethod
     def get_moving_average_template(cls, window_size):
@@ -71,6 +74,64 @@ class AWKProgram(object):
         return output
 
 
-class AWKNodeVisitor(ast.NodeVisitor):
-    def generic_visit(node):
+class AWKNodeTransformer(ast.NodeTransformer):
+
+    def __init__(self, context=None):
+        super(AWKNodeTransformer, self).__init__()
+        self.context = context or {}
+
+    def generic_visit(self, node):
         raise ValueError("Class is not supported {}".format(node))
+
+    def visit_Module(self, node):
+        """ Expected input
+
+        Assignment
+        Expression which is variable
+
+        """
+        output = []
+        for statement in node.body:
+            if not isinstance(statement, (ast.Expr, ast.Assign)):
+                raise ValueError("Incorrect input {}".format(statement))
+
+            if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Name):
+                statement = ast.Assign(
+                    targets=[statement.value], value=statement.value)
+
+            transformed_statement = self.visit(statement)
+            output.append(transformed_statement)
+        return output
+
+    def visit_Assign(self, node):
+        target_name = node.targets[0].id
+        value = self.visit(node.value)
+        self.context[target_name] = (target_name, None)
+        return "{} = {};".format(target_name, value)
+
+    def visit_Name(self, node):
+        if node.id in self.context:
+            return self.context[node.id][0]
+        else:
+            raise ValueError("Variable {} not in context".format(node.id))
+
+    def visit_BinOp(self, node):
+        options = {
+            ast.Add: '+',
+            ast.Sub: '-',
+            ast.Mult: '*',
+            ast.Pow: '**',
+            ast.Div: '/'
+        }
+        op = type(node.op)
+        if op in options:
+            return "{} {} {}".format(
+                self.visit(node.left),
+                options[op],
+                self.visit(node.right)
+            )
+        else:
+            raise ValueError("Not Supported binary operation {}".format(op.__name__))
+
+    def visit_Num(self, node):
+        return node.n
