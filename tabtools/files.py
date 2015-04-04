@@ -134,6 +134,4 @@ class FileList(list):
         command.append(subcommand)
         if kwargs.get("is_debug"):
             print(" ".join(command))
-        sys.stdout.write(self.header + '\n')
-        sys.stdout.flush()
         subprocess.call(command)

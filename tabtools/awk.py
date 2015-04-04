@@ -41,15 +41,15 @@ class AWKProgram(object):
             field.title: Expression('${}'.format(index + 1))
             for index, field in enumerate(self.fields)
         }
-
-    def __str__(self):
-        result = "'{\n"
-        output = Expression.from_str(
+        self.output = Expression.from_str(
             "; ".join(self.output_expressions),
             self.context
         )
-        result += "".join(["{};\n".format(str(o)) for o in output])
-        result += "print " + ", ".join([o.title for o in output])
+
+    def __str__(self):
+        result = "'{\n"
+        result += "".join(["{};\n".format(str(o)) for o in self.output])
+        result += "print " + ", ".join([o.title for o in self.output])
         result += "\n}'"
         return result
 
@@ -192,3 +192,29 @@ class Expression(ast.NodeTransformer):
 
     def visit_Num(self, node):
         return [Expression(node.n)]
+
+    def visit_Call(self, node):
+        """ Substitute function.
+        F(expression) -> __val_1 = expression, __val_2 = F(__val_1)
+        """
+        output = []
+        for arg in node.args:
+            var = "__var_{}".format(len(self.context))
+            visited_args = self.visit(arg)
+            val = visited_args[-1]
+            val.title = var
+            self.context[var] = val
+            visited_args[-1] = val
+            output.extend(visited_args)
+
+        # Built-in awk functions
+        var = "__var_{}".format(len(self.context))
+        expression = Expression(
+            "{func}({args})".format(func=node.func.id, args=" ,".join([
+                o.title for o in output
+            ])), title=var, context=self.context
+        )
+        self.context[var] = expression
+        output.append(expression)
+        output.append(Expression(var, title=var))
+        return output

@@ -4,9 +4,9 @@ import itertools
 import tempfile
 import sys
 
-from .base import OrderedField, DataDescription
+from .base import OrderedField, DataDescription, Field
 from .files import FileList
-from .awk import AWKProgram
+from .awk import Expression, AWKProgram
 
 
 def cat():
@@ -23,6 +23,8 @@ def cat():
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     args = parser.parse_args()
     files = FileList(args.files)
+    sys.stdout.write(files.header + '\n')
+    sys.stdout.flush()
     files("cat")
 
 
@@ -48,6 +50,8 @@ def srt():
             fields.index(f.title) + 1, f.sort_type, f.sort_order)
         for f in order
     ]
+    sys.stdout.write(files.header + '\n')
+    sys.stdout.flush()
     files("sort", *options)
 
 
@@ -66,7 +70,12 @@ def awk():
     files = FileList(args.files)
     program = AWKProgram(files.description.fields, args.filter, args.output)
 
-    sys.stdout.write("%s\n" % program)
+    # sys.stdout.write("%s\n" % program)
+    description = DataDescription([
+        Field(o.title, o._type) for o in program.output
+    ])
+    sys.stdout.write(str(description) + '\n')
+    sys.stdout.flush()
     files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 

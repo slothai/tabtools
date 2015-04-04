@@ -1,5 +1,4 @@
 import unittest
-import ast
 
 from ..awk import Expression
 
@@ -26,12 +25,22 @@ class TestAWKNodeTransformer(unittest.TestCase):
         expression = "a = x + 1"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
-        self.assertEqual(output[0].value, '$1 + 1')
+        self.assertEqual(output[0].value, '($1) + (1)')
 
     def test_simple_expressions2(self):
         expression = "a = x + 1; b = 1 + 1; c = a * 2"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
-        self.assertEqual(str(output[0]), 'a = $1 + 1')
-        self.assertEqual(str(output[1]), 'b = 1 + 1')
-        self.assertEqual(str(output[2]), 'c = a * 2')
+        self.assertEqual(str(output[0]), 'a = ($1) + (1)')
+        self.assertEqual(str(output[1]), 'b = (1) + (1)')
+        self.assertEqual(str(output[2]), 'c = (a) * (2)')
+
+    def test_transform_function(self):
+        expression = "a = exp(x + 1) + rand()"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            "__var_1 = ($1) + (1); __var_2 = exp(__var_1); " +
+            "__var_3 = rand(); a = (__var_2) + (__var_3)"
+        )
