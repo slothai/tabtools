@@ -209,12 +209,29 @@ class Expression(ast.NodeTransformer):
 
         # Built-in awk functions
         var = "__var_{}".format(len(self.context))
-        expression = Expression(
-            "{func}({args})".format(func=node.func.id, args=" ,".join([
-                o.title for o in output
-            ])), title=var, context=self.context
-        )
+
+        try:
+            transform_function = getattr(
+                self, "transform_{}".format(node.func.id))
+        except AttributeError:
+            expression = Expression(
+                "{func}({args})".format(func=node.func.id, args=" ,".join([
+                    o.title for o in output
+                ])), title=var, context=self.context
+            )
+        else:
+            code = transform_function(var, output)
+            expression = Expression(code, title=var, context=self.context)
+
         self.context[var] = expression
         output.append(expression)
         output.append(Expression(var, title=var))
         return output
+
+    def transform_SMA(self, output, inputs):
+        """ Transform function call into awk program."""
+        value = inputs[0].title
+        code = "NR == 1 ? {output} = {value} : {output} = ((NR - 1) *" +\
+            " {output} + {value}) / NR"
+        code = code.format(output=output, value=value)
+        return code

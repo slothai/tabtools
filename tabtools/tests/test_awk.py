@@ -44,3 +44,13 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "__var_1 = ($1) + (1); __var_2 = exp(__var_1); " +
             "__var_3 = rand(); a = (__var_2) + (__var_3)"
         )
+
+    def test_transform_function_predefined_ma(self):
+        expression = "a = SMA(x)"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            "__var_1 = $1; __var_2 = NR == 1 ? __var_2 = __var_1 : __var_2 " +
+            "= ((NR - 1) * __var_2 + __var_1) / NR; a = __var_2"
+        )
