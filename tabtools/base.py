@@ -20,6 +20,9 @@ class Field(object):
         if not title:
             raise ValueError("Title should exist")
 
+        if " " in title:
+            raise ValueError("field could not have spaces: {}".format(title))
+
         if _type is not None and _type not in self.TYPES:
             raise ValueError("Unknown type {}".format(_type))
 

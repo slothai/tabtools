@@ -294,7 +294,7 @@ class TestDataDescriptionSubheader(unittest.TestCase):
 class TestDataDescriptionSubheaderOrder(unittest.TestCase):
     def setUp(self):
         self.subheader = DataDescriptionSubheaderOrder(
-            "ORDER", "a:asc b:desc:numeric")
+            "ORDER", "a:asc\tb:desc:numeric")
         self.ordered_fields = [
             OrderedField("a"),
             OrderedField("b", sort_type="n", sort_order="r"),
@@ -335,7 +335,7 @@ class TestDataDescription(unittest.TestCase):
         )
         self.subheaders = (
             DataDescriptionSubheaderSize("SIZE", 1),
-            DataDescriptionSubheaderOrder("ORDER", "c:asc a:desc:numeric"),
+            DataDescriptionSubheaderOrder("ORDER", "c:asc\ta:desc:numeric"),
         )
         meta = "Data description and licence could be here. Even #META: tags!"
         self.meta = DataDescriptionSubheader("META", meta)
@@ -344,8 +344,8 @@ class TestDataDescription(unittest.TestCase):
             subheaders=self.subheaders,
             meta=self.meta
         )
-        self.header = "# a:float b:bool c #SIZE: 1" +\
-            " #ORDER: c:asc a:desc:numeric #META: {}".format(meta)
+        self.header = "# a:float\tb:bool\tc #SIZE: 1" +\
+            " #ORDER: c:asc\ta:desc:numeric #META: {}".format(meta)
 
     def test_str(self):
         self.assertEqual(str(self.data_description), self.header)
@@ -355,7 +355,7 @@ class TestDataDescription(unittest.TestCase):
             fields=self.fields,
             subheaders=self.subheaders,
         )
-        header = "# a:float b:bool c #SIZE: 1 #ORDER: c:asc a:desc:numeric"
+        header = "# a:float\tb:bool\tc #SIZE: 1 #ORDER: c:asc\ta:desc:numeric"
         self.assertEqual(str(data_description), header)
 
     def test__eq__fields(self):
@@ -423,15 +423,15 @@ class TestDataDescription(unittest.TestCase):
         with self.assertRaises(ValueError):
             DataDescription.parse("#a")
 
-        DataDescription.parse("# a b #SIZE: 1")
+        DataDescription.parse("# a\tb #SIZE: 1")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a b#SIZE: 1")
+            DataDescription.parse("# a\tb#SIZE: 1")
 
-        DataDescription.parse("# a b #SIZE: 1 #ORDER: a:asc")
+        DataDescription.parse("# a\tb #SIZE: 1 #ORDER: a:asc")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a b #SIZE: 1 ##ORDER: a:asc")
+            DataDescription.parse("# a\tb #SIZE: 1 ##ORDER: a:asc")
 
-        DataDescription.parse("# a b #ORDER: b:asc")
+        DataDescription.parse("# a\tb #ORDER: b:asc")
         with self.assertRaises(ValueError):
             DataDescription.parse("# a #ORDER: b:asc")
 
@@ -443,7 +443,7 @@ class TestDataDescription(unittest.TestCase):
             ),
             subheaders=(
                 DataDescriptionSubheaderSize("SIZE", 1),
-                DataDescriptionSubheaderOrder("ORDER", "a:asc b:desc:numeric"),
+                DataDescriptionSubheaderOrder("ORDER", "a:asc\tb:desc:numeric"),
             ),
             meta="meta1"
         )
