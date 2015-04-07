@@ -240,17 +240,16 @@ class Expression(ast.NodeTransformer):
 
         """
         value = inputs[0].title
-        window_size = inputs[1].title
-        # window_size = int(inputs[1].value)
-        code = """__ma_mod = NR % {size}
-__ma_sum += {value}
+        window_size = int(inputs[1].value)
+        code = """__ma_mod{size} = NR % {size}
+__ma_sum{size} += {value}
 if(NR > {size}) {{
-    __ma_sum -= __ma_array[__ma_mod]
-    {output} = __ma_sum / {size}
+    __ma_sum{size} -= __ma_array{size}[__ma_mod{size}]
+    {output} = __ma_sum{size} / {size}
 }} else {{
     {output} = ""
 }}
-__ma_array[__ma_mod] = {value}"""
+__ma_array{size}[__ma_mod{size}] = {value}"""
         code = code.format(output=output, value=value, size=window_size)
         return code
 

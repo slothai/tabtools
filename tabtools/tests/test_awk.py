@@ -69,12 +69,11 @@ class TestAWKNodeTransformer(unittest.TestCase):
         output = Expression.from_str(expression, context)
         self.assertEqual(
             "; ".join([str(o) for o in output]),
-            '__var_1 = $1; __var_2 = 5; __ma_mod = NR % __var_2' +
-            '\n__ma_sum += __var_1\n' +
-            'if(NR > __var_2) {\n    __ma_sum -= __ma_array[__ma_mod]\n    ' +
-            '__var_3 = __ma_sum / __var_2\n} else {\n    __var_3 = ""\n}\n' +
-            '__ma_array[__ma_mod] = __var_1; '
-            'a = __var_3'
+            '__var_1 = $1; __var_2 = 5; __ma_mod5 = NR % 5\n' +
+            '__ma_sum5 += __var_1\nif(NR > 5) {\n    ' +
+            '__ma_sum5 -= __ma_array5[__ma_mod5]\n    ' +
+            '__var_3 = __ma_sum5 / 5\n} else {\n    ' +
+            '__var_3 = ""\n}\n__ma_array5[__ma_mod5] = __var_1; a = __var_3'
         )
 
     def test_transform_exponential_moving_average(self):
