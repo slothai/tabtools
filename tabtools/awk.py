@@ -229,7 +229,10 @@ class Expression(ast.NodeTransformer):
             )
         else:
             code = transform_function(var, output)
-            expression = Expression(code, title=var, context=self.context)
+            # NOTE: dont add title to expression, it would assing generic
+            # fuction code to it, which might cause problems with that
+            # function.
+            expression = Expression(code, context=self.context)
 
         self.context[var] = expression
         output.append(expression)
@@ -261,12 +264,10 @@ class Expression(ast.NodeTransformer):
             $output = __ma_sum / 5;
         }
 
-
         """
         value = inputs[0].title
         window_size = inputs[1].title
-        code = """
-__ma_mod = NR % {size}
+        code = """__ma_mod = NR % {size}
 __ma_sum += {value}
 __ma_array[__ma_mod] = {value}
 if(NR > {size}) {{
@@ -276,4 +277,32 @@ if(NR > {size}) {{
     {output} = ""
 }}"""
         code = code.format(output=output, value=value, size=window_size)
+        return code
+
+    def transform_EMA(self, output, inputs):
+        """ Transform exponential moving average.
+
+        inputs: param, window size, alpha (optional)
+        alpha default = 2 / (1 + window_size)
+        it is possible to set alpha = 3 / (1 + window_size) in this case
+        in the first N elements there is 1 - exp(-3) = 95% of tatal weight.
+
+        Usage:
+            x = EMA(a, 5)
+
+        __alpha = {alpha}
+        NR == 1 ? {output} = {value} :
+            {output} = {alpha} * {value} + (1 - {alpha}) * {output}"
+
+        """
+        value = inputs[0].title
+        window_size = int(inputs[1].value)
+        if len(inputs) > 2:
+            alpha = inputs[2].value
+        else:
+            alpha = 2.0 / (1 + window_size)
+
+        code = """NR == 1 ? {output} = {value} : {output} = {alpha} * {value} + {beta} * {output}"""  # nolint
+        code = code.format(
+            output=output, value=value, alpha=alpha, beta=1-alpha)
         return code
