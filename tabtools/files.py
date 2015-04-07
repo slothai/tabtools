@@ -2,6 +2,7 @@
 import os
 import sys
 import subprocess
+from pipes import quote
 from .base import DataDescription
 from .utils import has_stdin, cached_property
 
@@ -91,9 +92,7 @@ class FileList(list):
     """ List of Files."""
 
     def __init__(self, files=None):
-        files = files or []
-        if has_stdin():
-            files.append(sys.stdin)
+        files = files or [sys.stdin]
         super(FileList, self).__init__([File(f).proxy for f in files])
 
     @property
@@ -130,8 +129,9 @@ class FileList(list):
         command = [
             'bash', '-o', 'pipefail', '-o', 'errexit', '-c',
         ]
-        subcommand = " ".join(['LC_ALL=C'] + list(args) + self.descriptors)
+        args = list(args)
+        subcommand = " ".join(
+            ['LC_ALL=C', args.pop(0)] + args + self.descriptors
+        )
         command.append(subcommand)
-        if kwargs.get("is_debug"):
-            print(" ".join(command))
         subprocess.call(command)

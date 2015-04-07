@@ -70,10 +70,10 @@ def awk():
     files = FileList(args.files)
     program = AWKProgram(files.description.fields, args.filter, args.output)
 
-    # sys.stdout.write("%s\n" % program)
+    sys.stdout.write("%s\n" % program)
     description = DataDescription([
         Field(o.title, o._type) for o in program.output
-        if not o.title.startswith("_")
+        if o.title and not o.title.startswith('_')
     ])
     sys.stdout.write(str(description) + '\n')
     sys.stdout.flush()

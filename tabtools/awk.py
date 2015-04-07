@@ -51,37 +51,11 @@ class AWKProgram(object):
         result = "'{\n"
         result += "".join(["{};\n".format(str(o)) for o in self.output])
         result += "print " + ", ".join([
-            o.title for o in self.output if not o.title.startswith('_')])
+            o.title for o in self.output
+            if o.title and not o.title.startswith('_')
+        ])
         result += "\n}'"
         return result
-
-    @classmethod
-    def get_moving_average_template(cls, window_size):
-        """ Generates template for moving agerage for given window size.
-
-        template = get_moving_average_template(2)
-        program = template.format(output, input)
-
-        Example output for window_size = 5
-        --------------
-
-        __ma5_mod = NR % 5;
-        if(NR > 5){__ma5_sum_<timestamp> -= __ma5_array_<timestamp>[__ma5_mod]};
-        sum+={1};
-        __ma5_array[mod]={1};
-        {0} = sum/count;
-
-        """
-        timestamp = "{:.5f}".format(time.time()).replace('.', '')
-        output = "__ma{size}_mod = NR % {size}; if(NR > {size}) {{{{" +\
-            "__ma{size}_sum_{timestamp} -= __ma{size}_array_{timestamp}" +\
-            "[__ma{size}_mod]}}}}; __ma{size}_sum_{timestamp} += {_in};" +\
-            "__ma{size}_array_{timestamp}[__ma{size}_mod] = {_in};" +\
-            "{_out} = __ma{size}_sum_{timestamp} / {size};"
-
-        output = output.format(
-            size=window_size, timestamp=timestamp, _in='{1}', _out='{0}')
-        return output
 
 
 class Expression(ast.NodeTransformer):
@@ -267,15 +241,16 @@ class Expression(ast.NodeTransformer):
         """
         value = inputs[0].title
         window_size = inputs[1].title
+        # window_size = int(inputs[1].value)
         code = """__ma_mod = NR % {size}
 __ma_sum += {value}
-__ma_array[__ma_mod] = {value}
 if(NR > {size}) {{
     __ma_sum -= __ma_array[__ma_mod]
     {output} = __ma_sum / {size}
 }} else {{
     {output} = ""
-}}"""
+}}
+__ma_array[__ma_mod] = {value}"""
         code = code.format(output=output, value=value, size=window_size)
         return code
 
