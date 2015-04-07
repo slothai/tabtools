@@ -17,6 +17,7 @@ implementation for Linux, original AWK was written for Unix v7.
 
 """
 import ast
+import copy
 import time
 
 
@@ -38,7 +39,7 @@ class AWKProgram(object):
         self.filters = filters or []
         self.output_expressions = output_expressions or []
         self.context = {
-            field.title: Expression('${}'.format(index + 1))
+            field.title: Expression('${}'.format(index + 1), title=field.title)
             for index, field in enumerate(self.fields)
         }
         self.output = Expression.from_str(
@@ -201,7 +202,13 @@ class Expression(ast.NodeTransformer):
         for arg in node.args:
             var = "__var_{}".format(len(self.context))
             visited_args = self.visit(arg)
-            val = visited_args[-1]
+
+            # NOTE: deepcopy possible existing in context expression, do not
+            # overwrite original title to not affect previous expression.
+            # NOTE: if it is ok to use previous expressions in current
+            # function, then lines until output.extend(..) could be removed.
+            # But in this case duplicates in generated code could be found.
+            val = copy.deepcopy(visited_args[-1])
             val.title = var
             self.context[var] = val
             visited_args[-1] = val

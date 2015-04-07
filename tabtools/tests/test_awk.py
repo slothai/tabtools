@@ -27,6 +27,13 @@ class TestAWKNodeTransformer(unittest.TestCase):
         output = Expression.from_str(expression, context)
         self.assertEqual(output[0].value, '($1) + (1)')
 
+    def test_field_and_expression(self):
+        expression = "a; b = a + 1"
+        context = dict(a=Expression('$1', 'a'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(output[0].value, '$1')
+        self.assertEqual(output[1].value, '($1) + (1)')
+
     def test_simple_expressions2(self):
         expression = "a = x + 1; b = 1 + 1; c = a * 2"
         context = dict(x=Expression('$1', 'x'))
@@ -46,11 +53,12 @@ class TestAWKNodeTransformer(unittest.TestCase):
         )
 
     def test_transform_function_predefined_ma(self):
-        expression = "a = SMA(x)"
+        expression = "x; a = SMA(x)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
         self.assertEqual(
             "; ".join([str(o) for o in output]),
-            "__var_1 = $1; __var_2 = NR == 1 ? __var_2 = __var_1 : __var_2 " +
+            "x = $1; __var_1 = $1; " +
+            "__var_2 = NR == 1 ? __var_2 = __var_1 : __var_2 " +
             "= ((NR - 1) * __var_2 + __var_1) / NR; a = __var_2"
         )
