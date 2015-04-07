@@ -63,8 +63,8 @@ def awk():
     )
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
-    parser.add_argument('-o', '--output', action="append", help="Output fields",
-        default=[])
+    parser.add_argument('-o', '--output', action="append",
+                        help="Output fields", default=[])
     parser.add_argument('-f', '--filter', action="append", help="Filter expression")
     args = parser.parse_args()
     files = FileList(args.files)
@@ -73,6 +73,7 @@ def awk():
     # sys.stdout.write("%s\n" % program)
     description = DataDescription([
         Field(o.title, o._type) for o in program.output
+        if not o.title.startswith("_")
     ])
     sys.stdout.write(str(description) + '\n')
     sys.stdout.flush()

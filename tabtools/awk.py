@@ -50,7 +50,8 @@ class AWKProgram(object):
     def __str__(self):
         result = "'{\n"
         result += "".join(["{};\n".format(str(o)) for o in self.output])
-        result += "print " + ", ".join([o.title for o in self.output])
+        result += "print " + ", ".join([
+            o.title for o in self.output if not o.title.startswith('_')])
         result += "\n}'"
         return result
 
