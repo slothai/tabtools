@@ -53,7 +53,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
         )
 
     def test_transform_function_predefined_ma(self):
-        expression = "x; a = SMA(x)"
+        expression = "x; a = AVG(x)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
         self.assertEqual(
@@ -61,4 +61,17 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "x = $1; __var_1 = $1; " +
             "__var_2 = NR == 1 ? __var_2 = __var_1 : __var_2 " +
             "= ((NR - 1) * __var_2 + __var_1) / NR; a = __var_2"
+        )
+
+    def test_transform_simple_moving_average(self):
+        expression = "a = SMA(x, 5)"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            '__var_1 = $1; __var_2 = 5; __var_3 = \n__ma_mod = NR % __var_2' +
+            '\n__ma_sum += __var_1\n__ma_array[__ma_mod] = __var_1\n' +
+            'if(NR > __var_2) {\n    __ma_sum -= __ma_array[__ma_mod]\n    ' +
+            '__var_3 = __ma_sum / __var_2\n} else {\n    __var_3 = ""\n}' +
+            '; a = __var_3'
         )

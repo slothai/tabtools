@@ -236,10 +236,44 @@ class Expression(ast.NodeTransformer):
         output.append(Expression(var, title=var))
         return output
 
-    def transform_SMA(self, output, inputs):
+    def transform_AVG(self, output, inputs):
         """ Transform function call into awk program."""
         value = inputs[0].title
         code = "NR == 1 ? {output} = {value} : {output} = ((NR - 1) *" +\
             " {output} + {value}) / NR"
         code = code.format(output=output, value=value)
+        return code
+
+    def transform_SMA(self, output, inputs):
+        """ Transform simple moving average.
+
+        inputs: param and window size.
+
+        Usage:
+            x = SMA(a, 5)
+
+        __ma_mod = NR % 5;
+        __ma_sum += $1;
+        __ma_array[__ma_mod] = $1;
+        $output = null;
+        if(NR > 5){
+            __ma_sum -= __ma_array[__ma_mod]
+            $output = __ma_sum / 5;
+        }
+
+
+        """
+        value = inputs[0].title
+        window_size = inputs[1].title
+        code = """
+__ma_mod = NR % {size}
+__ma_sum += {value}
+__ma_array[__ma_mod] = {value}
+if(NR > {size}) {{
+    __ma_sum -= __ma_array[__ma_mod]
+    {output} = __ma_sum / {size}
+}} else {{
+    {output} = ""
+}}"""
+        code = code.format(output=output, value=value, size=window_size)
         return code
