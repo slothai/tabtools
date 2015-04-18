@@ -22,7 +22,8 @@ import time
 
 
 class AWKProgram(object):
-    def __init__(self, fields, filters=None, output_expressions=None):
+    def __init__(self, fields, filters=None, output_expressions=None,
+                 group_key=None, group_expressions=None):
         """ Awk Program generator.
 
         Params
@@ -42,6 +43,9 @@ class AWKProgram(object):
             field.title: Expression('${}'.format(index + 1), title=field.title)
             for index, field in enumerate(self.fields)
         }
+        self.modules = {}
+
+
         self.output = Expression.from_str(
             "; ".join(self.output_expressions),
             self.context
@@ -63,6 +67,7 @@ class AWKProgram(object):
 
     @property
     def module_dequeue(self):
+        """ Deque realizsation in awk."""
         return """function deque_init(d) {d["+"] = d["-"] = 0}
 function deque_is_empty(d) {return d["+"] == d["-"]}
 function deque_push_back(d, val) {d[d["+"]++] = val}
@@ -83,10 +88,19 @@ class Expression(ast.NodeTransformer):
 
     """
 
-    def __init__(self, value, title=None, _type=None, context=None):
+    def __init__(self, value, title=None, _type=None,
+                 context=None, begin=None):
+        """ Expression init.
+
+        value: formula to use
+        title: optional variable to assign
+        begin: initial value
+
+        """
         self.title = title
         self._type = _type
         self.value = value
+        self.begin = begin
         self.context = context or {}
 
     def __str__(self):
@@ -100,8 +114,7 @@ class Expression(ast.NodeTransformer):
 
     @classmethod
     def from_str(cls, value, context=None):
-        obj = cls(None, context=context)
-        expressions =  obj.visit(ast.parse(value))
+        expressions = cls(None, context=context).visit(ast.parse(value))
         return expressions
 
     def generic_visit(self, node):
@@ -119,7 +132,8 @@ class Expression(ast.NodeTransformer):
             if not isinstance(statement, (ast.Expr, ast.Assign)):
                 raise ValueError("Incorrect input {}".format(statement))
 
-            if isinstance(statement, ast.Expr) and isinstance(statement.value, ast.Name):
+            if isinstance(statement, ast.Expr) and isinstance(
+                    statement.value, ast.Name):
                 statement = ast.Assign(
                     targets=[statement.value], value=statement.value)
 
@@ -279,16 +293,18 @@ class Expression(ast.NodeTransformer):
         """
         value = inputs[0].title
         window_size = int(inputs[1].value)
-        code = """__ma_mod{size} = NR % {size}
-__ma_sum{size} += {value}
+        suffix = self._get_suffix()
+        code = """__ma_mod{suffix} = NR % {size}
+__ma_sum{suffix} += {value}
 if(NR > {size}) {{
-    __ma_sum{size} -= __ma_array{size}[__ma_mod{size}]
-    {output} = __ma_sum{size} / {size}
+    __ma_sum{suffix} -= __ma_array{suffix}[__ma_mod{suffix}]
+    {output} = __ma_sum{suffix} / {size}
 }} else {{
     {output} = ""
 }}
-__ma_array{size}[__ma_mod{size}] = {value}"""
-        code = code.format(output=output, value=value, size=window_size)
+__ma_array{suffix}[__ma_mod{suffix}] = {value}"""
+        code = code.format(output=output, value=value,
+                           size=window_size, suffix=suffix)
         return code
 
     def transform_EMA(self, output, inputs):
@@ -331,11 +347,19 @@ __ma_array{size}[__ma_mod{size}] = {value}"""
         Two deques with values and indexes: dv and di
         comparison: ">" -> Max, "<" -> Min
         """
+        if not (1 <= len(inputs) <= 2):
+            raise ValueError("Function should have 1 or 2 arguments")
+
         value = inputs[0].title
+        if len(inputs) == 1:
+            code = "{o} = (NR == 1 ? {v} : ({v} {c} {o} ? {v}: {o}))".format(
+                o=output, v=value, c=comparison)
+            return code
+
         window_size = int(inputs[1].value)
         suffix = self._get_suffix()
         code = """if(NR == 1){{deque_init(dv{suffix}); deque_init(di{suffix})}}
-while(!deque_is_empty(dv{suffix}) && {value} {comparison}= deque_back(dv{suffix})) {{deque_pop_back(dv{suffix}); deque_pop_back(di{suffix})}}
+while(!deque_is_empty(dv{suffix}) && {value} {c}= deque_back(dv{suffix})) {{deque_pop_back(dv{suffix}); deque_pop_back(di{suffix})}}
 if (NR > {size}) {{
     while(!deque_is_empty(dv{suffix}) && deque_front(di{suffix}) <= NR - {size}) {{deque_pop_front(dv{suffix}); deque_pop_front(di{suffix})}}
 }}
@@ -344,7 +368,7 @@ deque_push_back(dv{suffix}, {value}); deque_push_back(di{suffix}, NR)
 """
         code = code.format(
             output=output, value=value, size=window_size,
-            suffix=suffix, comparison=comparison
+            suffix=suffix, c=comparison
         )
         return code
 
