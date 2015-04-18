@@ -85,3 +85,12 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "__var_1 = $1; __var_2 = 7; NR == 1 ? __var_3 = __var_1 : " +
             "__var_3 = 0.25 * __var_1 + 0.75 * __var_3; a = __var_3"
         )
+
+    def test_transform_max_moving_average(self):
+        expression = "a = Max(x, 3)"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            ""
+        )

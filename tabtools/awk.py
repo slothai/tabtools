@@ -46,9 +46,13 @@ class AWKProgram(object):
             "; ".join(self.output_expressions),
             self.context
         )
+        self.modules = ["dequeue"]
 
     def __str__(self):
-        result = "'{\n"
+        result = "'"
+        for module in self.modules:
+            result += getattr(self, "module_{}".format(module))
+        result += "{\n"
         result += "".join(["{};\n".format(str(o)) for o in self.output])
         result += "print " + ", ".join([
             o.title for o in self.output
@@ -56,6 +60,19 @@ class AWKProgram(object):
         ])
         result += "\n}'"
         return result
+
+    @property
+    def module_dequeue(self):
+        return """function deque_init(d) {d["+"] = d["-"] = 0}
+function deque_is_empty(d) {return d["+"] == d["-"]}
+function deque_push_back(d, val) {d[d["+"]++] = val}
+function deque_push_front(d, val) {d[--d["-"]] = val}
+function deque_back(d) {return d[d["+"] - 1]}
+function deque_front(d) {return d[d["-"]]}
+function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}
+function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}
+function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}
+"""
 
 
 class Expression(ast.NodeTransformer):
@@ -166,6 +183,23 @@ class Expression(ast.NodeTransformer):
         else:
             raise ValueError("Not Supported binary operation {}".format(op.__name__))
 
+    def visit_UnaryOp(self, node):
+        options = {
+            ast.USub: '-',
+        }
+        op = type(node.op)
+        if op in options:
+            output = self.visit(node.operand)
+            self.context.update(output[-1].context)
+
+            expr = Expression(
+                "{}{}".format(options[op], output[-1].value),
+                context=self.context)
+            output.append(expr)
+            return output
+        else:
+            raise ValueError("Not Supported unary operation {}".format(op.__name__))
+
     def visit_Num(self, node):
         return [Expression(node.n)]
 
@@ -212,6 +246,10 @@ class Expression(ast.NodeTransformer):
         output.append(expression)
         output.append(Expression(var, title=var))
         return output
+
+    def _get_suffix(self):
+        """ Get unique suffix for variables insude the function."""
+        return "_{}".format(int(time.time() * 10 ** 6))
 
     def transform_AVG(self, output, inputs):
         """ Transform function call into awk program."""
@@ -264,7 +302,6 @@ __ma_array{size}[__ma_mod{size}] = {value}"""
         Usage:
             x = EMA(a, 5)
 
-        __alpha = {alpha}
         NR == 1 ? {output} = {value} :
             {output} = {alpha} * {value} + (1 - {alpha}) * {output}"
 
@@ -276,7 +313,54 @@ __ma_array{size}[__ma_mod{size}] = {value}"""
         else:
             alpha = 2.0 / (1 + window_size)
 
-        code = """NR == 1 ? {output} = {value} : {output} = {alpha} * {value} + {beta} * {output}"""  # nolint
+        code = "{output} = (NR == 1 ? {value} : {alpha} * {value} + {beta} * {output})"  # nolint
         code = code.format(
             output=output, value=value, alpha=alpha, beta=1-alpha)
+        return code
+
+    def transform_Prev(self, output, inputs):
+        """ Previous value of input"""
+        value = inputs[0].title
+        suffix = self._get_suffix()
+        code = "{output} = (NR == 1 ? 0 : prev{suffix}); prev{suffix} = {value}"
+        code = code.format(output=output, value=value, suffix=suffix)
+        return code
+
+    def _transform_MinMax(self, output, inputs, comparison=None):
+        """
+        Two deques with values and indexes: dv and di
+        comparison: ">" -> Max, "<" -> Min
+        """
+        value = inputs[0].title
+        window_size = int(inputs[1].value)
+        suffix = self._get_suffix()
+        code = """if(NR == 1){{deque_init(dv{suffix}); deque_init(di{suffix})}}
+while(!deque_is_empty(dv{suffix}) && {value} {comparison}= deque_back(dv{suffix})) {{deque_pop_back(dv{suffix}); deque_pop_back(di{suffix})}}
+if (NR > {size}) {{
+    while(!deque_is_empty(dv{suffix}) && deque_front(di{suffix}) <= NR - {size}) {{deque_pop_front(dv{suffix}); deque_pop_front(di{suffix})}}
+}}
+deque_push_back(dv{suffix}, {value}); deque_push_back(di{suffix}, NR)
+{output} = deque_front(dv{suffix})
+"""
+        code = code.format(
+            output=output, value=value, size=window_size,
+            suffix=suffix, comparison=comparison
+        )
+        return code
+
+    def transform_Min(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison="<")
+
+    def transform_Max(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison=">")
+
+    def transform_Sum(self, output, inputs):
+        code = "{output} = (NR == 1 ? {value} : {output} + {value})".format(
+            output=output, value=inputs[0].title)
+        return code
+
+    def transform_max(self, output, inputs):
+        # FIXME: check input, validate, clean.
+        code = "{output} = ({a} > {b} ? {a}: {b})".format(
+            output=output, a=inputs[0].title, b=inputs[1].title)
         return code
