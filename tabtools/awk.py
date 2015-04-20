@@ -39,36 +39,76 @@ class AWKProgram(object):
         self.fields = fields
         self.filters = filters or []
         self.output_expressions = output_expressions or []
+        self.group_expressions = group_expressions or []
         self.context = {
             field.title: Expression('${}'.format(index + 1), title=field.title)
             for index, field in enumerate(self.fields)
         }
-        self.modules = {}
 
+        if group_key:
+            self.key = Expression.from_str(group_key, self.context)
+            self.key[-1].title = "__group_key"
+            self.context["__group_key"] = self.key[-1]
+
+            self.group = Expression.from_str(
+                "; ".join(self.group_expressions), self.context)
+
+        self.modules = set([])
+        self.modules.add("dequeue")
 
         self.output = Expression.from_str(
             "; ".join(self.output_expressions),
             self.context
         )
-        self.modules = ["dequeue"]
 
     def __str__(self):
-        result = "'"
-        for module in self.modules:
-            result += getattr(self, "module_{}".format(module))
+        result = "'\n"
+        result += "\n".join([getattr(self, "module_{}".format(module))
+                               for module in self.modules])
         result += "{\n"
-        result += "".join(["{};\n".format(str(o)) for o in self.output])
+        result += self.group_code
+        result += "\n"
+        result += self.output_code
+        result += "\n}'"
+        return result
+
+    @property
+    def modules_code(self):
+        return "\n".join([getattr(self, "module_{}".format(module))
+                          for module in self.modules])
+
+    @property
+    def output_code(self):
+        result = "".join(["{};\n".format(str(o)) for o in self.output])
         result += "print " + ", ".join([
             o.title for o in self.output
             if o.title and not o.title.startswith('_')
         ])
-        result += "\n}'"
+        return result
+
+    @property
+    def group_code(self):
+        """ Get code of grouping part."""
+        result = "\n".join(str(k) for k in self.key)
+        group_code = """\nif(NR == 1){{
+    # Update group expressions
+{group}
+{output_code}
+}} else {{
+
+}}"""
+        group_code = group_code.format(
+            group="".join(["    {};\n".format(str(o)) for o in self.group if str(o)]),
+            output_code=self.output_code
+        )
+        result += group_code
         return result
 
     @property
     def module_dequeue(self):
         """ Deque realizsation in awk."""
-        return """function deque_init(d) {d["+"] = d["-"] = 0}
+        return """# awk module degue
+function deque_init(d) {d["+"] = d["-"] = 0}
 function deque_is_empty(d) {return d["+"] == d["-"]}
 function deque_push_back(d, val) {d[d["+"]++] = val}
 function deque_push_front(d, val) {d[--d["-"]] = val}
@@ -77,6 +117,7 @@ function deque_front(d) {return d[d["-"]]}
 function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}
 function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}
 function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}
+# end module
 """
 
 
@@ -261,6 +302,9 @@ class Expression(ast.NodeTransformer):
         output.append(Expression(var, title=var))
         return output
 
+    def visit_Expr(self, node):
+        return self.visit(node.value)
+
     def _get_suffix(self):
         """ Get unique suffix for variables insude the function."""
         return "_{}".format(int(time.time() * 10 ** 6))
@@ -388,3 +432,17 @@ deque_push_back(dv{suffix}, {value}); deque_push_back(di{suffix}, NR)
         code = "{output} = ({a} > {b} ? {a}: {b})".format(
             output=output, a=inputs[0].title, b=inputs[1].title)
         return code
+
+    def transform_DateEpoch(self, output, inputs):
+        value = inputs[0].title
+        suffix = self._get_suffix()
+        code = """split({v}, __date{suffix}, "-"); {o} = mktime(__date{suffix}[1]" "__date{suffix}[2]" "__date{suffix}[3]" 00 00 00 UTC")"""
+        code = code.format(o=output, v=value, suffix=suffix)
+        return code
+
+    # Group Expressions
+    def transform_First(self, output, inputs):
+        return ""
+
+    def transform_Last(self, output, inputs):
+        return "{o} = {v}".format(o=output, v=inputs[0].title)

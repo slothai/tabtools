@@ -94,3 +94,12 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "; ".join([str(o) for o in output]),
             ""
         )
+
+    def test_transform_date_to_epoch(self):
+        expression = "a = DateEpoch(x)"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            ""
+        )
