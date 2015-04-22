@@ -1,10 +1,23 @@
 import unittest
 from testfixtures import compare
+from unittest.mock import patch
 
-from ..awk import Expression
+
+from ..import six
+from ..awk import Expression, AWKProgram
+from ..files import FileList
 
 
 class TestAWKNodeTransformer(unittest.TestCase):
+    def setUp(self):
+        self.fd = open('tabtools/tests/files/sample1.tsv')
+        self.files = FileList([self.fd])
+        self.patcher = patch('sys.stdout', new_callable=six.StringIO)
+        self.stdout = self.patcher.start()
+
+    def tearDown(self):
+        self.patcher.stop()
+
     def test_constant(self):
         expression = "1"
 
@@ -53,7 +66,18 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "__var_3 = rand(); a = (__var_2) + (__var_3)"
         )
 
-    def test_transform_function_predefined_ma(self):
+    def test_transform_function_sum(self):
+        expression = "a = SUM(x)"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(output[-1].modules, set())
+        compare(
+            "; ".join([str(o) for o in output]),
+            "__var_1 = $1; __var_2 += __var_1; a = __var_2"
+        )
+
+    @unittest.skip("Refactoring")
+    def test_transform_function_ma(self):
         expression = "x; a = AVG(x)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
@@ -64,6 +88,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "= ((NR - 1) * __var_2 + __var_1) / NR; a = __var_2"
         )
 
+    @unittest.skip("Refactoring")
     def test_transform_simple_moving_average(self):
         expression = "a = SMA(x, 5)"
         context = dict(x=Expression('$1', 'x'))
@@ -77,6 +102,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
             '__var_3 = ""\n}\n__ma_array5[__ma_mod5] = __var_1; a = __var_3'
         )
 
+    @unittest.skip("Refactoring")
     def test_transform_exponential_moving_average(self):
         expression = "a = EMA(x, 7)"
         context = dict(x=Expression('$1', 'x'))
@@ -87,6 +113,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "0.25 * __var_1 + 0.75 * __var_3); a = __var_3"
         )
 
+    @unittest.skip("Refactoring")
     def test_transform_max_moving_average(self):
         expression = "a = Max(x, 3)"
         context = dict(x=Expression('$1', 'x'))
@@ -96,6 +123,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
             ""
         )
 
+    @unittest.skip("Refactoring")
     def test_transform_date_to_epoch(self):
         expression = "a = DateEpoch(x)"
         context = dict(x=Expression('$1', 'x'))
@@ -104,3 +132,11 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "; ".join([str(o) for o in output]),
             ""
         )
+
+    @unittest.skip("Need to mock subprocess.call output receiver")
+    def test_file(self):
+        expressions = ["epoch = DateEpoch(date)"]
+        program = AWKProgram(
+            self.files.description.fields, output_expressions=expressions)
+        self.files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+        self.stdout.getvalue()

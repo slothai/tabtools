@@ -20,8 +20,33 @@ import ast
 import copy
 import time
 
+from .utils import Choices
+
 
 class AWKProgram(object):
+
+    """ AWK program generator.
+
+    Supports group function and modules
+
+    Supported functions:
+        SUM(x): sum of elements in column x
+        SUM(x, k): sum of last k elements in column x
+        SUM2(x): sum of squares of elements in column x
+        AVG(x): average value of elements in column x
+        AVG(x, k): moving average of last k elements in column x
+        EMA(x, k): exponential moving average with a = 2 / (k + 1)
+        MAX(x): maximum value in column x
+        MAX(x, k): moving maximum of last k elements in x
+        MIN(x): minimum value in column x
+        MIN(x, k): moving minimum of last k elements in x
+        EPOCH(x): convert date from iso to timestamp
+    """
+
+    MODULES = Choices(
+        ("dequeue", "DEQUE"),
+    )
+
     def __init__(self, fields, filters=None, output_expressions=None,
                  group_key=None, group_expressions=None):
         """ Awk Program generator.
@@ -34,6 +59,21 @@ class AWKProgram(object):
 
         context: dict
             title -> (index, [type]), if there is no type, str is used.
+
+        Program structure
+        -----------------
+        <modules>
+        BEGIN{
+            <init>
+        }{
+            <main part>
+        }END{
+            <final part>
+        }
+
+        _NR local line number.
+        If program has group functionality, it star
+        If program does not have group functionality, it equals to NR
 
         """
         self.fields = fields
@@ -53,9 +93,6 @@ class AWKProgram(object):
             self.group = Expression.from_str(
                 "; ".join(self.group_expressions), self.context)
 
-        self.modules = set([])
-        self.modules.add("dequeue")
-
         self.output = Expression.from_str(
             "; ".join(self.output_expressions),
             self.context
@@ -63,10 +100,9 @@ class AWKProgram(object):
 
     def __str__(self):
         result = "'\n"
-        result += "\n".join([getattr(self, "module_{}".format(module))
-                               for module in self.modules])
+        result += self.modules_code
         result += "{\n"
-        result += self.group_code
+        # result += self.group_code
         result += "\n"
         result += self.output_code
         result += "\n}'"
@@ -74,6 +110,20 @@ class AWKProgram(object):
 
     @property
     def modules_code(self):
+        """ Get code for modules used.
+
+        Expression might use modules or functions, such as queue or dequeue.
+        Iterate over all of the expressions and collect modules from them.
+
+        """
+        modules = set([])
+        for expression in self.output:
+            modules |= expression.modules
+
+        if self.group_key:
+            for expression in self.key + self.group:
+                modules |= expression.modules
+
         return "\n".join([getattr(self, "module_{}".format(module))
                           for module in self.modules])
 
@@ -117,7 +167,6 @@ function deque_front(d) {return d[d["-"]]}
 function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}
 function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}
 function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}
-# end module
 """
 
 
@@ -143,6 +192,7 @@ class Expression(ast.NodeTransformer):
         self.value = value
         self.begin = begin
         self.context = context or {}
+        self.modules = set({})
 
     def __str__(self):
         if self.title is not None:
@@ -173,10 +223,12 @@ class Expression(ast.NodeTransformer):
             if not isinstance(statement, (ast.Expr, ast.Assign)):
                 raise ValueError("Incorrect input {}".format(statement))
 
-            if isinstance(statement, ast.Expr) and isinstance(
-                    statement.value, ast.Name):
-                statement = ast.Assign(
-                    targets=[statement.value], value=statement.value)
+            if isinstance(statement, ast.Expr):
+                if isinstance(statement.value, ast.Name):
+                    statement = ast.Assign(
+                        targets=[statement.value], value=statement.value)
+                else:
+                    raise ValueError("Incorrect input {}".format(statement))
 
             output.extend(self.visit(statement))
         return output
@@ -309,13 +361,25 @@ class Expression(ast.NodeTransformer):
         """ Get unique suffix for variables insude the function."""
         return "_{}".format(int(time.time() * 10 ** 6))
 
+    def transform_SUM(self, output, inputs):
+        code = "{o} += {v}".format(o=output, v=inputs[0].title)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_SUM2(self, output, inputs):
+        """ Sum of squares."""
+        code = "{o} += {v} ** 2".format(o=output, v=inputs[0].title)
+        expression = Expression(code, context=self.context)
+        return expression
+
     def transform_AVG(self, output, inputs):
         """ Transform function call into awk program."""
         value = inputs[0].title
         code = "NR == 1 ? {output} = {value} : {output} = ((NR - 1) *" +\
             " {output} + {value}) / NR"
         code = code.format(output=output, value=value)
-        return code
+        expression = Expression(code, context=self.context)
+        return expression
 
     def transform_SMA(self, output, inputs):
         """ Transform simple moving average.
