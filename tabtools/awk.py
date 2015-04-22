@@ -472,10 +472,10 @@ __ma_array{suffix}[__ma_mod{suffix}] = {value}"""
         else:
             alpha = 2.0 / (1 + window_size)
 
-        code = "{output} = (NR == 1 ? {value} : {alpha} * {value} + {beta} * {output})"  # nolint
-        code = code.format(
-            output=output, value=value, alpha=alpha, beta=1-alpha)
-        return code
+        code = "{o} = (NR == 1 ? {v} : {a} * {v} + {b} * {o})".format(
+            o=output, v=value, a=alpha, b=1-alpha)
+        expression = Expression(code, context=self.context)
+        return expression
 
     def transform_Prev(self, output, inputs):
         """ Previous value of input"""
