@@ -1,4 +1,5 @@
 import unittest
+from testfixtures import compare
 
 from ..awk import Expression
 
@@ -67,7 +68,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
         expression = "a = SMA(x, 5)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
-        self.assertEqual(
+        compare(
             "; ".join([str(o) for o in output]),
             '__var_1 = $1; __var_2 = 5; __ma_mod5 = NR % 5\n' +
             '__ma_sum5 += __var_1\nif(NR > 5) {\n    ' +
@@ -80,17 +81,17 @@ class TestAWKNodeTransformer(unittest.TestCase):
         expression = "a = EMA(x, 7)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
-        self.assertEqual(
+        compare(
             "; ".join([str(o) for o in output]),
-            "__var_1 = $1; __var_2 = 7; NR == 1 ? __var_3 = __var_1 : " +
-            "__var_3 = 0.25 * __var_1 + 0.75 * __var_3; a = __var_3"
+            "__var_1 = $1; __var_2 = 7; __var_3 = (NR == 1 ? __var_1 : " +
+            "0.25 * __var_1 + 0.75 * __var_3); a = __var_3"
         )
 
     def test_transform_max_moving_average(self):
         expression = "a = Max(x, 3)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
-        self.assertEqual(
+        compare(
             "; ".join([str(o) for o in output]),
             ""
         )
@@ -99,7 +100,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
         expression = "a = DateEpoch(x)"
         context = dict(x=Expression('$1', 'x'))
         output = Expression.from_str(expression, context)
-        self.assertEqual(
+        compare(
             "; ".join([str(o) for o in output]),
             ""
         )
