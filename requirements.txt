@@ -1,3 +1,4 @@
-nose
 wheel
 tox
+nose
+testfixtures==4.1.2
