@@ -148,7 +148,8 @@ class AWKProgram(object):
 
 }}"""
         group_code = group_code.format(
-            group="".join(["    {};\n".format(str(o)) for o in self.group if str(o)]),
+            group="".join([
+                "    {};\n".format(str(o)) for o in self.group if str(o)]),
             output_code=self.output_code
         )
         result += group_code
@@ -157,17 +158,18 @@ class AWKProgram(object):
     @property
     def module_dequeue(self):
         """ Deque realizsation in awk."""
-        return """# awk module degue
-function deque_init(d) {d["+"] = d["-"] = 0}
-function deque_is_empty(d) {return d["+"] == d["-"]}
-function deque_push_back(d, val) {d[d["+"]++] = val}
-function deque_push_front(d, val) {d[--d["-"]] = val}
-function deque_back(d) {return d[d["+"] - 1]}
-function deque_front(d) {return d[d["-"]]}
-function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}
-function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}
-function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}
-"""
+        return "\n".join([
+            '# awk module degue',
+            'function deque_init(d) {d["+"] = d["-"] = 0}',
+            'function deque_is_empty(d) {return d["+"] == d["-"]}',
+            'function deque_push_back(d, val) {d[d["+"]++] = val}',
+            'function deque_push_front(d, val) {d[--d["-"]] = val}',
+            'function deque_back(d) {return d[d["+"] - 1]}',
+            'function deque_front(d) {return d[d["-"]]}',
+            'function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}',  # nolint
+            'function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}',  # nolint
+            'function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}',  # nolint
+        ])
 
 
 class Expression(ast.NodeTransformer):
@@ -362,7 +364,40 @@ class Expression(ast.NodeTransformer):
         return "_{}".format(int(time.time() * 10 ** 6))
 
     def transform_SUM(self, output, inputs):
-        code = "{o} += {v}".format(o=output, v=inputs[0].title)
+        """ Get sum or moving sum.
+
+        Moving sum is calculated for lask k (inputs[1]) elements. Implementation
+        is specific for awk: undefined variables equal to 0. Code is minified
+        version of following:
+
+        BEGIN {output = 0; array = [0, ..., 0]}
+        mod = NR % k
+        output = output + value
+        if(NR > k){
+            output = output - array[mod];  # remove old elements
+        }
+        array[mod] = value
+
+        Modified version:
+        mod = NR % k
+        output += (value - array[mod])
+        array[mod] = value
+
+        """
+        if len(inputs) > 2:
+            raise ValueError("SUM function: too many arguments (>2)")
+
+        value = inputs[0].title
+        if len(inputs) == 1:
+            code = "{o} += {v}".format(o=output, v=value)
+        else:
+            window_size = int(inputs[1].value)
+            suffix = self._get_suffix()
+            code = "; ".join([
+                "__sum_mod{suffix} = NR % {size}",
+                "{o} += ({v} - __sum_array{suffix}[__sum_mod{suffix}])",
+                "__sum_array{suffix}[__sum_mod{suffix}] = {v}",
+            ]).format(o=output, v=value, size=window_size, suffix=suffix)
         expression = Expression(code, context=self.context)
         return expression
 

@@ -76,6 +76,20 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "__var_1 = $1; __var_2 += __var_1; a = __var_2"
         )
 
+    def test_transform_function_sum_window(self):
+        expression = "a = SUM(x, 2)"
+        context = dict(x=Expression('$1', 'x'))
+
+        with patch('tabtools.awk.Expression._get_suffix', return_value=""):
+            output = Expression.from_str(expression, context)
+        self.assertEqual(output[-1].modules, set())
+        compare(
+            "; ".join([str(o) for o in output]),
+            "__var_1 = $1; __var_2 = 2; __sum_mod = NR % 2; " +
+            "__var_3 += (__var_1 - __sum_array[__sum_mod]); " +
+            "__sum_array[__sum_mod] = __var_1; a = __var_3"
+        )
+
     @unittest.skip("Refactoring")
     def test_transform_function_ma(self):
         expression = "x; a = AVG(x)"
