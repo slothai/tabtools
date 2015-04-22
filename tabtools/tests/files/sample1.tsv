@@ -1,4 +1,4 @@
-# id name value #SIZE: 3 #ORDER: id:asc
-1   Alex    2
-2   Kate    3
-3   Jack    0
+# id	name	value	date #SIZE: 3 #ORDER: id:asc
+1	Alex	2	2000-01-01
+2	Kate	3	2000-01-02
+3	Jack	0	2000-01-03
