@@ -42,6 +42,7 @@ setup(
             'tcat = tabtools.scripts:cat',
             'tsrt = tabtools.scripts:srt',
             'tawk = tabtools.scripts:awk',
+            'tgrp = tabtools.scripts:grp',
             'tpretty = tabtools.scripts:pretty',
         ]
     },

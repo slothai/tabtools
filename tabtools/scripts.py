@@ -105,7 +105,7 @@ def grp():
     args = parser.parse_args()
     files = FileList(args.files)
 
-    program = AWKProgram(
+    program = AWKGroupProgram(
         files.description.fields,
         group_key=args.groupkey,
         group_expressions=args.groupexpressions

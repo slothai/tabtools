@@ -137,73 +137,78 @@ class AWKStreamProgram(AWKBaseProgram):
 
 
 class AWKGroupProgram(AWKBaseProgram):
-    def __init__(self, fields, filters=None, output_expressions=None,
-                 group_key=None, group_expressions=None):
-        """ Awk Program generator.
 
-        Params
-        ------
-        fields: tabtools.base.DataDescription.fields
-        output_expressions: list, optional
-        filters: list, optional
+    """ Awk Program generator.
 
-        context: dict
-            title -> (index, [type]), if there is no type, str is used.
+    Program structure
+    -----------------
+    <modules>
+    BEGIN{
+        <init>
+    }{
+        <main part>
+    }END{
+        <final part>
+    }
 
-        Program structure
-        -----------------
-        <modules>
-        BEGIN{
-            <init>
-        }{
-            <main part>
-        }END{
-            <final part>
-        }
+    _NR local line number.
+    If program has group functionality, it star
+    If program does not have group functionality, it equals to NR
 
-        _NR local line number.
-        If program has group functionality, it star
-        If program does not have group functionality, it equals to NR
+    """
 
-        """
+    def __init__(self, fields, group_key, group_expressions):
         self.fields = fields
-        self.filters = filters or []
-        self.output_expressions = output_expressions or []
-        self.group_expressions = group_expressions or []
         self.context = {
             field.title: Expression('${}'.format(index + 1), title=field.title)
             for index, field in enumerate(self.fields)
         }
 
-        if group_key:
-            self.key = Expression.from_str(group_key, self.context)
-            self.key[-1].title = "__group_key"
-            self.context["__group_key"] = self.key[-1]
+        self.key = Expression.from_str(group_key, self.context)
+        self.key[-1].title = "__group_key"
+        self.context["__group_key"] = self.key[-1]
 
-            self.group = Expression.from_str(
-                "; ".join(self.group_expressions), self.context)
+        self.group_expressions = group_expressions or []
+        self.output = GroupExpression.from_str(
+            "; ".join(self.group_expressions), self.context)
 
-        self.output = Expression.from_str(
-            "; ".join(self.output_expressions),
-            self.context
-        )
+    def __str__(self):
+        result = self.output_code
+        return result
+
     @property
-    def group_code(self):
+    def output_code(self):
         """ Get code of grouping part."""
-        result = "\n".join(str(k) for k in self.key)
-        group_code = """\nif(NR == 1){{
-            # Update group expressions
-        {group}
-        {output_code}
-        }} else {{
-
-        }}"""
+        result = "'{\n"
+        result += "\n".join(str(k) for k in self.key)
+        result += "\n"
+        group_code = "\n".join([
+            "if(__group_key != __group_key_previous && NR != 1){{",
+            "  {group_finalize}",
+            "  print {group_output}",
+            "}} else {{",
+            "  {group_update}",
+            "}}",
+            "__group_key_previous = __group_key;",
+            "}}\nEND{{",
+            "  {group_finalize}",
+            "  print {group_output}",
+        ])
         group_code = group_code.format(
-            group="".join([
-                "    {};\n".format(str(o)) for o in self.group if str(o)]),
-            output_code=self.output_code
+            group_update="\n  ".join([
+                str(o) for o in self.output if not o.title or o.title.startswith('_')
+            ]),
+            group_finalize="\n".join([
+                str(o) for o in self.output
+                if o.title and not o.title.startswith('_')
+            ]),
+            group_output= ", ".join([
+                o.title for o in self.output
+                if o.title and not o.title.startswith('_')
+            ])
         )
         result += group_code
+        result += "\n}'"
         return result
 
 
@@ -622,8 +627,24 @@ class GroupExpression(Expression):
 
     """ Expression for group operations."""
 
-    def transform_First(self, output, inputs):
-        return ""
+    def transform_FIRST(self, output, inputs):
+        code = ""
+        expression = Expression(code, context=self.context)
+        return expression
 
-    def transform_Last(self, output, inputs):
-        return "{o} = {v}".format(o=output, v=inputs[0].title)
+    def transform_LAST(self, output, inputs):
+        code = "{o} = {v}".format(o=output, v=inputs[0].title)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_MinMax(self, output, inputs, comparison)
+        code = "{o} = ({v} {c} {o} || NR == 1 ? {v} : {o})".format(
+            o=output, v=value, c=comparison)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_MIN(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison="<")
+
+    def transform_MAX(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison=">")
