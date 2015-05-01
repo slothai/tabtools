@@ -6,7 +6,7 @@ import sys
 
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
-from .awk import AWKProgram
+from .awk import AWKStreamProgram, AWKGroupProgram
 
 
 def cat():
@@ -67,6 +67,36 @@ def awk():
                         help="Output fields", default=[])
     parser.add_argument('-f', '--filter', action="append", default=[],
                         help="Filter expression")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="Print result program")
+    args = parser.parse_args()
+    files = FileList(args.files)
+    program = AWKStreamProgram(
+        files.description.fields,
+        filters=args.filter,
+        output_expressions=args.output
+    )
+
+    if args.debug:
+        sys.stdout.write("%s\n" % program)
+
+    description = DataDescription([
+        Field(o.title, o._type) for o in program.output
+        if o.title and not o.title.startswith('_')
+    ])
+    sys.stdout.write(str(description) + '\n')
+    sys.stdout.flush()
+    files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+
+
+def grp():
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Perform a group operation on all FILE(s)"
+        "and write result to standard output."
+    )
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     parser.add_argument('-k', '--groupkey', help="Group expression")
     parser.add_argument('-g', '--groupexpressions', action="append",
                         default=[], help="Group expression")
@@ -74,24 +104,23 @@ def awk():
                         help="Print result program")
     args = parser.parse_args()
     files = FileList(args.files)
+
     program = AWKProgram(
         files.description.fields,
-        filters=args.filter,
-        output_expressions=args.output,
         group_key=args.groupkey,
         group_expressions=args.groupexpressions
     )
 
     if args.debug:
         sys.stdout.write("%s\n" % program)
-    else:
-        description = DataDescription([
-            Field(o.title, o._type) for o in program.output
-            if o.title and not o.title.startswith('_')
-        ])
-        sys.stdout.write(str(description) + '\n')
-        sys.stdout.flush()
-        files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+
+    description = DataDescription([
+        Field(o.title, o._type) for o in program.output
+        if o.title and not o.title.startswith('_')
+    ])
+    sys.stdout.write(str(description) + '\n')
+    sys.stdout.flush()
+    files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
 def pretty():

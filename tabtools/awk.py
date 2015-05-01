@@ -23,30 +23,120 @@ import time
 from .utils import Choices
 
 
-class AWKProgram(object):
+class AWKBaseProgram(object):
 
-    """ AWK program generator.
-
-    Supports group function and modules
-
-    Supported functions:
-        SUM(x): sum of elements in column x
-        SUM(x, k): sum of last k elements in column x
-        SUM2(x): sum of squares of elements in column x
-        AVG(x): average value of elements in column x
-        AVG(x, k): moving average of last k elements in column x
-        EMA(x, k): exponential moving average with a = 2 / (k + 1)
-        MAX(x): maximum value in column x
-        MAX(x, k): moving maximum of last k elements in x
-        MIN(x): minimum value in column x
-        MIN(x, k): moving minimum of last k elements in x
-        EPOCH(x): convert date from iso to timestamp
-    """
+    """ AWK program generator."""
 
     MODULES = Choices(
         ("dequeue", "DEQUE"),
     )
 
+
+    def __str__(self):
+        result = "'\n"
+        result += self.modules_code
+
+        if self.begin_code:
+            result += "BEGIN{{\n{}\n}}\n".format(self.begin_code)
+
+        result += "{\n"
+        result += self.output_code
+        result += "\n}'"
+        return result
+
+    @property
+    def begin_code(self):
+        return "\n".join([
+            expression.begin for expression in self.output
+            if expression.begin])
+
+    @property
+    def modules_code(self):
+        """ Get code for modules used.
+
+        Expression might use modules or functions, such as queue or dequeue.
+        Iterate over all of the expressions and collect modules from them.
+
+        """
+        modules = set([])
+        for expression in self.output:
+            modules |= expression.modules
+
+        # if self.group_key:
+            # for expression in self.key + self.group:
+                # modules |= expression.modules
+
+        return "\n".join([
+            getattr(self, "module_{}".format(module))
+            for module in modules])
+
+    @property
+    def module_dequeue(self):
+        """ Deque realizsation in awk."""
+        return "\n".join([
+            '# awk module degue',
+            'function deque_init(d) {d["+"] = d["-"] = 0}',
+            'function deque_is_empty(d) {return d["+"] == d["-"]}',
+            'function deque_push_back(d, val) {d[d["+"]++] = val}',
+            'function deque_push_front(d, val) {d[--d["-"]] = val}',
+            'function deque_back(d) {return d[d["+"] - 1]}',
+            'function deque_front(d) {return d[d["-"]]}',
+            'function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}',  # nolint
+            'function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}',  # nolint
+            'function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}',  # nolint
+        ])
+
+
+class AWKStreamProgram(AWKBaseProgram):
+
+    """ AWK stream processor.
+
+    Params
+    ------
+    fields: tabtools.base.DataDescription.fields
+    output_expressions: list, optional
+    filters: list, optional
+
+    context: dict
+        title -> (index, [type]), if there is no type, str is used.
+
+    Program structure
+    -----------------
+        <modules>
+        BEGIN{
+            <init>
+        }
+        {
+            <main part>
+        }
+
+    """
+
+    def __init__(self, fields, filters=None, output_expressions=None):
+        self.fields = fields
+        self.filters = filters or []
+        self.output_expressions = output_expressions or []
+        self.context = {
+            field.title: Expression('${}'.format(index + 1), title=field.title)
+            for index, field in enumerate(self.fields)
+        }
+
+        self.output = StreamExpression.from_str(
+            "; ".join(self.output_expressions),
+            self.context
+        )
+
+    @property
+    def output_code(self):
+        result = ";\n".join([str(o) for o in self.output])
+        result += ";\nprint " + ", ".join([
+            o.title for o in self.output
+            if o.title and not o.title.startswith('_')
+        ])
+        return result
+
+
+class AWKGroupProgram(AWKBaseProgram):
     def __init__(self, fields, filters=None, output_expressions=None,
                  group_key=None, group_expressions=None):
         """ Awk Program generator.
@@ -97,56 +187,17 @@ class AWKProgram(object):
             "; ".join(self.output_expressions),
             self.context
         )
-
-    def __str__(self):
-        result = "'\n"
-        result += self.modules_code
-        result += "{\n"
-        # result += self.group_code
-        result += "\n"
-        result += self.output_code
-        result += "\n}'"
-        return result
-
-    @property
-    def modules_code(self):
-        """ Get code for modules used.
-
-        Expression might use modules or functions, such as queue or dequeue.
-        Iterate over all of the expressions and collect modules from them.
-
-        """
-        modules = set([])
-        for expression in self.output:
-            modules |= expression.modules
-
-        if self.group_key:
-            for expression in self.key + self.group:
-                modules |= expression.modules
-
-        return "\n".join([getattr(self, "module_{}".format(module))
-                          for module in self.modules])
-
-    @property
-    def output_code(self):
-        result = "".join(["{};\n".format(str(o)) for o in self.output])
-        result += "print " + ", ".join([
-            o.title for o in self.output
-            if o.title and not o.title.startswith('_')
-        ])
-        return result
-
     @property
     def group_code(self):
         """ Get code of grouping part."""
         result = "\n".join(str(k) for k in self.key)
         group_code = """\nif(NR == 1){{
-    # Update group expressions
-{group}
-{output_code}
-}} else {{
+            # Update group expressions
+        {group}
+        {output_code}
+        }} else {{
 
-}}"""
+        }}"""
         group_code = group_code.format(
             group="".join([
                 "    {};\n".format(str(o)) for o in self.group if str(o)]),
@@ -155,28 +206,15 @@ class AWKProgram(object):
         result += group_code
         return result
 
-    @property
-    def module_dequeue(self):
-        """ Deque realizsation in awk."""
-        return "\n".join([
-            '# awk module degue',
-            'function deque_init(d) {d["+"] = d["-"] = 0}',
-            'function deque_is_empty(d) {return d["+"] == d["-"]}',
-            'function deque_push_back(d, val) {d[d["+"]++] = val}',
-            'function deque_push_front(d, val) {d[--d["-"]] = val}',
-            'function deque_back(d) {return d[d["+"] - 1]}',
-            'function deque_front(d) {return d[d["-"]]}',
-            'function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}',  # nolint
-            'function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}',  # nolint
-            'function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}',  # nolint
-        ])
-
 
 class Expression(ast.NodeTransformer):
 
     """ Expression class.
 
     Class is used to control expression types
+
+    Supported functions:
+        EPOCH(x): convert date from iso to timestamp
 
     """
 
@@ -290,7 +328,8 @@ class Expression(ast.NodeTransformer):
             output.append(expr)
             return output
         else:
-            raise ValueError("Not Supported binary operation {}".format(op.__name__))
+            raise ValueError("Not Supported binary operation {}".format(
+                op.__name__))
 
     def visit_UnaryOp(self, node):
         options = {
@@ -307,7 +346,8 @@ class Expression(ast.NodeTransformer):
             output.append(expr)
             return output
         else:
-            raise ValueError("Not Supported unary operation {}".format(op.__name__))
+            raise ValueError("Not Supported unary operation {}".format(
+                op.__name__))
 
     def visit_Num(self, node):
         return [Expression(node.n)]
@@ -363,12 +403,43 @@ class Expression(ast.NodeTransformer):
         """ Get unique suffix for variables insude the function."""
         return "_{}".format(int(time.time() * 10 ** 6))
 
+    def transform_DateEpoch(self, output, inputs):
+        value = inputs[0].title
+        suffix = self._get_suffix()
+
+        code = "; ".join([
+            'split({v}, __date{suffix}, "-")',
+            '{o} = mktime(__date{suffix}[1]" "__date{suffix}[2]" "' +
+            '__date{suffix}[3]" 00 00 00 UTC")',
+
+        ]).format(o=output, v=value, suffix=suffix)
+        return code
+
+
+class StreamExpression(Expression):
+
+    """ Exression management for stream operations.
+
+    Supported functions:
+        SUM(x): sum of elements in column x
+        SUM(x, k): sum of last k elements in column x
+        SUM2(x): sum of squares of elements in column x
+        AVG(x): average value of elements in column x
+        AVG(x, k): moving average of last k elements in column x
+        EMA(x, k): exponential moving average with a = 2 / (k + 1)
+        MAX(x): maximum value in column x
+        MAX(x, k): moving maximum of last k elements in x
+        MIN(x): minimum value in column x
+        MIN(x, k): moving minimum of last k elements in x
+
+    """
+
     def transform_SUM(self, output, inputs):
         """ Get sum or moving sum.
 
-        Moving sum is calculated for lask k (inputs[1]) elements. Implementation
-        is specific for awk: undefined variables equal to 0. Code is minified
-        version of following:
+        Moving sum is calculated for lask k (inputs[1]) elements.
+        Implementation is specific for awk: undefined variables equal to 0.
+        Code is minified version of following:
 
         BEGIN {output = 0; array = [0, ..., 0]}
         mod = NR % k
@@ -408,47 +479,61 @@ class Expression(ast.NodeTransformer):
         return expression
 
     def transform_AVG(self, output, inputs):
-        """ Transform function call into awk program."""
-        value = inputs[0].title
-        code = "NR == 1 ? {output} = {value} : {output} = ((NR - 1) *" +\
-            " {output} + {value}) / NR"
-        code = code.format(output=output, value=value)
-        expression = Expression(code, context=self.context)
-        return expression
+        """ Get average or moving average.
 
-    def transform_SMA(self, output, inputs):
-        """ Transform simple moving average.
+        Moving average is calculated for lask k (inputs[1]) elements.
+        Implementation is specific for awk: undefined variables equal to 0.
+        Code is minified version of following:
 
-        inputs: param and window size.
-
-        Usage:
-            x = SMA(a, 5)
-
-        __ma_mod = NR % 5;
-        __ma_sum += $1;
-        __ma_array[__ma_mod] = $1;
-        $output = null;
-        if(NR > 5){
-            __ma_sum -= __ma_array[__ma_mod]
-            $output = __ma_sum / 5;
+        BEGIN {sum = 0; array = [0, ..., 0]}
+        mod = NR % k
+        sum = sum + value
+        if(NR > k){
+            sum = sum - array[mod];  # remove old elements
+            output = sum / k
+        } else {
+            output = sum / NR
         }
+        array[mod] = value
+
+        Modified version:
+            mod = NR % k
+            sum += (value - array[mod])
+            array[mod] = value
+            output = sum / (NR > k ? k : NR)
+
+        Average version initial code:
+            if (NR == 1) {
+                output = value
+            } else {
+                output = ((NR - 1) * output + value) / NR
+            }
+        Minified:
+            o = (NR == 1 ? v : ((NR - 1) * {o} + {v}) / NR)
+        Minified awk specific:
+            o = ((NR - 1) * {o} + {v}) / NR
 
         """
+        if len(inputs) > 2:
+            raise ValueError("AVG function: too many arguments (>2)")
+
         value = inputs[0].title
-        window_size = int(inputs[1].value)
-        suffix = self._get_suffix()
-        code = """__ma_mod{suffix} = NR % {size}
-__ma_sum{suffix} += {value}
-if(NR > {size}) {{
-    __ma_sum{suffix} -= __ma_array{suffix}[__ma_mod{suffix}]
-    {output} = __ma_sum{suffix} / {size}
-}} else {{
-    {output} = ""
-}}
-__ma_array{suffix}[__ma_mod{suffix}] = {value}"""
-        code = code.format(output=output, value=value,
-                           size=window_size, suffix=suffix)
-        return code
+        if len(inputs) == 1:
+            code = "{o} = ((NR - 1) * {o} + {v}) / NR".format(
+                o=output, v=value)
+        else:
+            window_size = int(inputs[1].value)
+            suffix = self._get_suffix()
+
+            code = "; ".join([
+                "__sum_mod{sfx} = NR % {size}",
+                "__sum{sfx} += ({v} - __sum_array{sfx}[__sum_mod{sfx}])",
+                "__sum_array{sfx}[__sum_mod{sfx}] = {v}",
+                "{o} = __sum{sfx} / (NR > {size} ? {size} : NR)",
+            ]).format(o=output, v=value, size=window_size, sfx=suffix)
+
+        expression = Expression(code, context=self.context)
+        return expression
 
     def transform_EMA(self, output, inputs):
         """ Transform exponential moving average.
@@ -465,9 +550,12 @@ __ma_array{suffix}[__ma_mod{suffix}] = {value}"""
             {output} = {alpha} * {value} + (1 - {alpha}) * {output}"
 
         """
+        if len(inputs) > 2:
+            raise ValueError("EMA function: too many arguments (>2)")
+
         value = inputs[0].title
         window_size = int(inputs[1].value)
-        if len(inputs) > 2:
+        if len(inputs) == 2:
             alpha = inputs[2].value
         else:
             alpha = 2.0 / (1 + window_size)
@@ -521,25 +609,17 @@ deque_push_back(dv{suffix}, {value}); deque_push_back(di{suffix}, NR)
     def transform_Max(self, output, inputs):
         return self._transform_MinMax(output, inputs, comparison=">")
 
-    def transform_Sum(self, output, inputs):
-        code = "{output} = (NR == 1 ? {value} : {output} + {value})".format(
-            output=output, value=inputs[0].title)
-        return code
-
     def transform_max(self, output, inputs):
         # FIXME: check input, validate, clean.
         code = "{output} = ({a} > {b} ? {a}: {b})".format(
             output=output, a=inputs[0].title, b=inputs[1].title)
         return code
 
-    def transform_DateEpoch(self, output, inputs):
-        value = inputs[0].title
-        suffix = self._get_suffix()
-        code = """split({v}, __date{suffix}, "-"); {o} = mktime(__date{suffix}[1]" "__date{suffix}[2]" "__date{suffix}[3]" 00 00 00 UTC")"""
-        code = code.format(o=output, v=value, suffix=suffix)
-        return code
 
-    # Group Expressions
+class GroupExpression(Expression):
+
+    """ Expression for group operations."""
+
     def transform_First(self, output, inputs):
         return ""
 
