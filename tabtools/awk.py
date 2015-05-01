@@ -37,7 +37,7 @@ class AWKBaseProgram(object):
         result += self.modules_code
 
         if self.begin_code:
-            result += "BEGIN{{\n{}\n}}\n".format(self.begin_code)
+            result += "\nBEGIN{{\n{}\n}}\n".format(self.begin_code)
 
         result += "{\n"
         result += self.output_code
@@ -219,7 +219,7 @@ class Expression(ast.NodeTransformer):
     """
 
     def __init__(self, value, title=None, _type=None,
-                 context=None, begin=None):
+                 context=None, begin=None, modules=None):
         """ Expression init.
 
         value: formula to use
@@ -232,7 +232,7 @@ class Expression(ast.NodeTransformer):
         self.value = value
         self.begin = begin
         self.context = context or {}
-        self.modules = set({})
+        self.modules = set(modules or {})
 
     def __str__(self):
         if self.title is not None:
@@ -385,11 +385,7 @@ class Expression(ast.NodeTransformer):
                 ])), title=var, context=self.context
             )
         else:
-            code = transform_function(var, output)
-            # NOTE: dont add title to expression, it would assing generic
-            # fuction code to it, which might cause problems with that
-            # function.
-            expression = Expression(code, context=self.context)
+            expression = transform_function(var, output)
 
         self.context[var] = expression
         output.append(expression)
@@ -405,14 +401,11 @@ class Expression(ast.NodeTransformer):
 
     def transform_DateEpoch(self, output, inputs):
         value = inputs[0].title
-        suffix = self._get_suffix()
-
         code = "; ".join([
-            'split({v}, __date{suffix}, "-")',
-            '{o} = mktime(__date{suffix}[1]" "__date{suffix}[2]" "' +
-            '__date{suffix}[3]" 00 00 00 UTC")',
-
-        ]).format(o=output, v=value, suffix=suffix)
+            'split({v}, __date{o}, "-")',
+            '{o} = mktime(__date{o}[1]" "__date{o}[2]" "' +
+            '__date{o}[3]" 00 00 00 UTC")',
+        ]).format(o=output, v=value)
         return code
 
 
@@ -463,12 +456,11 @@ class StreamExpression(Expression):
             code = "{o} += {v}".format(o=output, v=value)
         else:
             window_size = int(inputs[1].value)
-            suffix = self._get_suffix()
             code = "; ".join([
-                "__sum_mod{suffix} = NR % {size}",
-                "{o} += ({v} - __sum_array{suffix}[__sum_mod{suffix}])",
-                "__sum_array{suffix}[__sum_mod{suffix}] = {v}",
-            ]).format(o=output, v=value, size=window_size, suffix=suffix)
+                "__sum_mod{o} = NR % {size}",
+                "{o} += ({v} - __sum_array{o}[__sum_mod{o}])",
+                "__sum_array{o}[__sum_mod{o}] = {v}",
+            ]).format(o=output, v=value, size=window_size)
         expression = Expression(code, context=self.context)
         return expression
 
@@ -523,14 +515,12 @@ class StreamExpression(Expression):
                 o=output, v=value)
         else:
             window_size = int(inputs[1].value)
-            suffix = self._get_suffix()
-
             code = "; ".join([
-                "__sum_mod{sfx} = NR % {size}",
-                "__sum{sfx} += ({v} - __sum_array{sfx}[__sum_mod{sfx}])",
-                "__sum_array{sfx}[__sum_mod{sfx}] = {v}",
-                "{o} = __sum{sfx} / (NR > {size} ? {size} : NR)",
-            ]).format(o=output, v=value, size=window_size, sfx=suffix)
+                "__sum_mod{o} = NR % {size}",
+                "__sum{o} += ({v} - __sum_array{o}[__sum_mod{o}])",
+                "__sum_array{o}[__sum_mod{o}] = {v}",
+                "{o} = __sum{o} / (NR > {size} ? {size} : NR)",
+            ]).format(o=output, v=value, size=window_size)
 
         expression = Expression(code, context=self.context)
         return expression
@@ -568,45 +558,57 @@ class StreamExpression(Expression):
     def transform_Prev(self, output, inputs):
         """ Previous value of input"""
         value = inputs[0].title
-        suffix = self._get_suffix()
-        code = "{output} = (NR == 1 ? 0 : prev{suffix}); prev{suffix} = {value}"
-        code = code.format(output=output, value=value, suffix=suffix)
+        code = "{o} = (NR == 1 ? 0 : prev{o}); prev{o} = {v}"
+        # code = "{o} = prev{o}; prev{o} = {v}"
+        code = code.format(o=output, v=value)
         return code
 
     def _transform_MinMax(self, output, inputs, comparison=None):
-        """
-        Two deques with values and indexes: dv and di
+        """ Get Min/Max value.
+
+        Works with both total and moving maximum/minimum.
+
+        Parameters:
+        -----------
         comparison: ">" -> Max, "<" -> Min
+
+        Two deques with values and indexes: dv and di
+
         """
-        if not (1 <= len(inputs) <= 2):
+        if len(inputs) > 2:
             raise ValueError("Function should have 1 or 2 arguments")
 
         value = inputs[0].title
         if len(inputs) == 1:
-            code = "{o} = (NR == 1 ? {v} : ({v} {c} {o} ? {v}: {o}))".format(
+            code = "{o} = ({v} {c} {o} || NR == 1 ? {v} : {o})".format(
                 o=output, v=value, c=comparison)
-            return code
+            expression = Expression(code, context=self.context)
+        else:
+            window_size = int(inputs[1].value)
+            begin = "deque_init(dv{o}); deque_init(di{o})".format(o=output)
+            code = "\n".join([
+                "while(!deque_is_empty(dv{o}) && {v} {c}= deque_back(dv{o})) {{",
+                "  deque_pop_back(dv{o}); deque_pop_back(di{o})",
+                "}}",
+                "if (NR > {size}) {{",
+                "  while(!deque_is_empty(dv{o}) && deque_front(di{o}) <= NR - {size}) {{",
+                "    deque_pop_front(dv{o}); deque_pop_front(di{o})",
+                "  }}\n}}",
+                "deque_push_back(dv{o}, {v}); deque_push_back(di{o}, NR)",
+                "{o} = deque_front(dv{o})"
+            ]).format(
+                o=output, v=value, size=window_size, c=comparison)
 
-        window_size = int(inputs[1].value)
-        suffix = self._get_suffix()
-        code = """if(NR == 1){{deque_init(dv{suffix}); deque_init(di{suffix})}}
-while(!deque_is_empty(dv{suffix}) && {value} {c}= deque_back(dv{suffix})) {{deque_pop_back(dv{suffix}); deque_pop_back(di{suffix})}}
-if (NR > {size}) {{
-    while(!deque_is_empty(dv{suffix}) && deque_front(di{suffix}) <= NR - {size}) {{deque_pop_front(dv{suffix}); deque_pop_front(di{suffix})}}
-}}
-deque_push_back(dv{suffix}, {value}); deque_push_back(di{suffix}, NR)
-{output} = deque_front(dv{suffix})
-"""
-        code = code.format(
-            output=output, value=value, size=window_size,
-            suffix=suffix, c=comparison
-        )
-        return code
+            expression = Expression(
+                code, begin=begin, context=self.context,
+                modules=[AWKBaseProgram.MODULES.DEQUE]
+            )
+        return expression
 
-    def transform_Min(self, output, inputs):
+    def transform_MIN(self, output, inputs):
         return self._transform_MinMax(output, inputs, comparison="<")
 
-    def transform_Max(self, output, inputs):
+    def transform_MAX(self, output, inputs):
         return self._transform_MinMax(output, inputs, comparison=">")
 
     def transform_max(self, output, inputs):
