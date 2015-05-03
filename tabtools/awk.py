@@ -31,7 +31,6 @@ class AWKBaseProgram(object):
         ("dequeue", "DEQUE"),
     )
 
-
     def __str__(self):
         result = "'\n"
         result += self.modules_code
@@ -183,26 +182,55 @@ class AWKGroupProgram(AWKBaseProgram):
         result += "\n".join(str(k) for k in self.key)
         result += "\n"
         group_code = "\n".join([
-            "if(__group_key != __group_key_previous && NR != 1){{",
-            "  {group_finalize}",
-            "  print {group_output}",
+            "if(NR == 1){{",
+            "  {group_init}",
             "}} else {{",
-            "  {group_update}",
+            "  if(__group_key != __group_key_previous){{",
+            "    {group_finalize}",
+            "    print {group_output}",
+            "  {group_init}",
+            "  }} else {{",
+            "    {group_update}",
+            "  }}",
             "}}",
             "__group_key_previous = __group_key;",
             "}}\nEND{{",
-            "  {group_finalize}",
+            "    {group_finalize}",
             "  print {group_output}",
+
+
+
+
+
+            # "if(__group_key != __group_key_previous && NR != 1){{",
+            # "  {group_finalize}",
+            # "  print {group_output}",
+            # "}} else {{",
+            # "  {group_update}",
+            # "}}",
+            # "__group_key_previous = __group_key;",
+            # "}}\nEND{{",
+            # "  {group_finalize}",
+            # "  print {group_output}",
         ])
         group_code = group_code.format(
-            group_update="\n  ".join([
-                str(o) for o in self.output if not o.title or o.title.startswith('_')
+            group_init = "\n  ".join([
+                str(o) if not o.begin else str(o.begin) for o in self.output
+                if not (o.title and not o.title.startswith('_'))
             ]),
-            group_finalize="\n".join([
+
+
+            group_update="\n    ".join([
+                str(o) for o in self.output
+                if not (o.title and not o.title.startswith('_'))
+            ]),
+
+
+            group_finalize="\n    ".join([
                 str(o) for o in self.output
                 if o.title and not o.title.startswith('_')
             ]),
-            group_output= ", ".join([
+            group_output=", ".join([
                 o.title for o in self.output
                 if o.title and not o.title.startswith('_')
             ])
@@ -628,19 +656,22 @@ class GroupExpression(Expression):
     """ Expression for group operations."""
 
     def transform_FIRST(self, output, inputs):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
         code = ""
-        expression = Expression(code, context=self.context)
+        expression = Expression(code, begin=begin, context=self.context)
         return expression
 
     def transform_LAST(self, output, inputs):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
         code = "{o} = {v}".format(o=output, v=inputs[0].title)
-        expression = Expression(code, context=self.context)
+        expression = Expression(code, begin=begin, context=self.context)
         return expression
 
-    def transform_MinMax(self, output, inputs, comparison)
+    def _transform_MinMax(self, output, inputs, comparison):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
         code = "{o} = ({v} {c} {o} || NR == 1 ? {v} : {o})".format(
-            o=output, v=value, c=comparison)
-        expression = Expression(code, context=self.context)
+            o=output, v=inputs[0].title, c=comparison)
+        expression = Expression(code, begin=begin, context=self.context)
         return expression
 
     def transform_MIN(self, output, inputs):
@@ -648,3 +679,15 @@ class GroupExpression(Expression):
 
     def transform_MAX(self, output, inputs):
         return self._transform_MinMax(output, inputs, comparison=">")
+
+    def transform_SUM(self, output, inputs):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
+        code = "{o} += {v}".format(o=output, v=inputs[0].title)
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
+
+    def transform_SIZE(self, output, inputs):
+        begin = "{o} = 1".format(o=output)
+        code = "{o}++".format(o=output)
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
