@@ -164,8 +164,9 @@ class AWKGroupProgram(AWKBaseProgram):
         }
 
         self.key = Expression.from_str(group_key, self.context)
-        self.key[-1].title = "__group_key"
-        self.context["__group_key"] = self.key[-1]
+        # self.key[-1].title = "__group_key"
+        self.key.append(Expression(self.key[-1].title, title="__group_key"))
+        # self.context["__group_key"] = self.key[-1]
 
         self.group_expressions = group_expressions or []
         self.output = GroupExpression.from_str(
@@ -183,12 +184,12 @@ class AWKGroupProgram(AWKBaseProgram):
         result += "\n"
         group_code = "\n".join([
             "if(NR == 1){{",
-            "  {group_init}",
+            "    {group_init}",
             "}} else {{",
             "  if(__group_key != __group_key_previous){{",
             "    {group_finalize}",
-            "    print {group_output}",
-            "  {group_init}",
+            "    print __group_key_previous, {group_output}",
+            "    {group_init}",
             "  }} else {{",
             "    {group_update}",
             "  }}",
@@ -196,36 +197,17 @@ class AWKGroupProgram(AWKBaseProgram):
             "__group_key_previous = __group_key;",
             "}}\nEND{{",
             "    {group_finalize}",
-            "  print {group_output}",
-
-
-
-
-
-            # "if(__group_key != __group_key_previous && NR != 1){{",
-            # "  {group_finalize}",
-            # "  print {group_output}",
-            # "}} else {{",
-            # "  {group_update}",
-            # "}}",
-            # "__group_key_previous = __group_key;",
-            # "}}\nEND{{",
-            # "  {group_finalize}",
-            # "  print {group_output}",
+            "    print __group_key_previous, {group_output}",
         ])
         group_code = group_code.format(
-            group_init = "\n  ".join([
+            group_init="\n    ".join([
                 str(o) if not o.begin else str(o.begin) for o in self.output
                 if not (o.title and not o.title.startswith('_'))
             ]),
-
-
             group_update="\n    ".join([
                 str(o) for o in self.output
                 if not (o.title and not o.title.startswith('_'))
             ]),
-
-
             group_finalize="\n    ".join([
                 str(o) for o in self.output
                 if o.title and not o.title.startswith('_')
@@ -412,10 +394,23 @@ class Expression(ast.NodeTransformer):
             transform_function = getattr(
                 self, "transform_{}".format(node.func.id))
         except AttributeError:
+            # NOTE: remove following duplicated arguments. They appear if
+            # function has function as an argument:
+            # f(x, g(y)) -> __var1 = x, __var2=y ....
+            # f(__var1, __var2, __var2)  # strftime(%U, DateEpoch(x))
+            args = []
+            processed_args = set()
+
+            for o in output:
+                if o.title and o.title not in processed_args:
+                    args.append(o.title)
+                    processed_args.add(o.title)
+
             expression = Expression(
-                "{func}({args})".format(func=node.func.id, args=" ,".join([
-                    o.title for o in output
-                ])), title=var, context=self.context
+                "{func}({args})".format(
+                    func=node.func.id,
+                    args=", ".join(args)
+                ), title=var, context=self.context
             )
         else:
             expression = transform_function(var, output)
@@ -428,6 +423,9 @@ class Expression(ast.NodeTransformer):
     def visit_Expr(self, node):
         return self.visit(node.value)
 
+    def visit_Str(self, node):
+        return [Expression("\"{}\"".format(node.s), title=node.s)]
+
     def _get_suffix(self):
         """ Get unique suffix for variables insude the function."""
         return "_{}".format(int(time.time() * 10 ** 6))
@@ -439,7 +437,8 @@ class Expression(ast.NodeTransformer):
             '{o} = mktime(__date{o}[1]" "__date{o}[2]" "' +
             '__date{o}[3]" 00 00 00 UTC")',
         ]).format(o=output, v=value)
-        return code
+        expression = Expression(code, context=self.context)
+        return expression
 
 
 class StreamExpression(Expression):

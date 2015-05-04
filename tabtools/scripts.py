@@ -115,9 +115,10 @@ def grp():
         sys.stdout.write("%s\n" % program)
 
     description = DataDescription([
-        Field(o.title, o._type) for o in program.output
+        Field(o.title, o._type) for o in program.key + program.output
         if o.title and not o.title.startswith('_')
     ])
+
     sys.stdout.write(str(description) + '\n')
     sys.stdout.flush()
     files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))

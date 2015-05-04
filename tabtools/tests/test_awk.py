@@ -1,10 +1,13 @@
 import unittest
 from testfixtures import compare
-from unittest.mock import patch
+try:
+    from unittest.mock import patch
+except ImportError:
+    from mock import patch
 
 
 from ..import six
-from ..awk import Expression, AWKProgram
+from ..awk import Expression, AWKBaseProgram
 from ..files import FileList
 
 
@@ -88,6 +91,16 @@ class TestAWKNodeTransformer(unittest.TestCase):
             "__var_1 = $1; __var_2 = 2; __sum_mod = NR % 2; " +
             "__var_3 += (__var_1 - __sum_array[__sum_mod]); " +
             "__sum_array[__sum_mod] = __var_1; a = __var_3"
+        )
+
+    def test_transform_strftime(self):
+        expression = 'a = strftime("%U", x)'
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        compare(
+            "; ".join([str(o) for o in output]),
+            "__var_1 = %U; __var_2 = $1; __var_3 = strftime(__var_1, __var_2);"
+            " a = __var_3"
         )
 
     @unittest.skip("Refactoring")
