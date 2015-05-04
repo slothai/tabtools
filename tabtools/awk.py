@@ -577,7 +577,7 @@ class StreamExpression(Expression):
 
         value = inputs[0].title
         window_size = int(inputs[1].value)
-        if len(inputs) == 2:
+        if len(inputs) == 3:
             alpha = inputs[2].value
         else:
             alpha = 2.0 / (1 + window_size)
@@ -590,10 +590,11 @@ class StreamExpression(Expression):
     def transform_Prev(self, output, inputs):
         """ Previous value of input"""
         value = inputs[0].title
-        code = "{o} = (NR == 1 ? 0 : prev{o}); prev{o} = {v}"
+        code = "{o} = prev{o}; prev{o} = {v}"
         # code = "{o} = prev{o}; prev{o} = {v}"
         code = code.format(o=output, v=value)
-        return code
+        expression = Expression(code, context=self.context)
+        return expression
 
     def _transform_MinMax(self, output, inputs, comparison=None):
         """ Get Min/Max value.
@@ -647,7 +648,8 @@ class StreamExpression(Expression):
         # FIXME: check input, validate, clean.
         code = "{output} = ({a} > {b} ? {a}: {b})".format(
             output=output, a=inputs[0].title, b=inputs[1].title)
-        return code
+        expression = Expression(code, context=self.context)
+        return expression
 
 
 class GroupExpression(Expression):
