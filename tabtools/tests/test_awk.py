@@ -59,6 +59,24 @@ class TestAWKNodeTransformer(unittest.TestCase):
         self.assertEqual(str(output[1]), 'b = (1) + (1)')
         self.assertEqual(str(output[2]), 'c = (a) * (2)')
 
+    def test_condition(self):
+        expression = "a = x if x > 0 else 0"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            "a = (($1) > (0)) ? ($1) : (0)"
+        )
+
+    def test_bool(self):
+        expression = "a = x and 1"
+        context = dict(x=Expression('$1', 'x'))
+        output = Expression.from_str(expression, context)
+        self.assertEqual(
+            "; ".join([str(o) for o in output]),
+            "a = ($1) && (1)"
+        )
+
     def test_transform_function(self):
         expression = "a = exp(x + 1) + rand()"
         context = dict(x=Expression('$1', 'x'))

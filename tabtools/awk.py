@@ -346,6 +346,38 @@ class Expression(ast.NodeTransformer):
             raise ValueError("Not Supported binary operation {}".format(
                 op.__name__))
 
+    def visit_BoolOp(self, node):
+        options = {
+            ast.And: '&&',
+            ast.Or: '||',
+        }
+        op = type(node.op)
+        vals = []
+        if op in options:
+            output = []
+
+            for value in node.values:
+                values = self.visit(value)
+
+                for v in values[:-1]:
+                    output.append(v)
+                    self.context.update(v.context)
+
+                vals.append(values[-1].value)
+
+            expr = Expression(
+                " {} ".format(options[op]).join([
+                    "({})".format(v) for v in vals
+                ]),
+                context=self.context
+            )
+            output.append(expr)
+            return output
+        else:
+            raise ValueError("Not Supported bool operation {}".format(
+                op.__name__))
+
+
     def visit_UnaryOp(self, node):
         options = {
             ast.USub: '-',
@@ -425,6 +457,51 @@ class Expression(ast.NodeTransformer):
 
     def visit_Str(self, node):
         return [Expression("\"{}\"".format(node.s), title=node.s)]
+
+    def visit_IfExp(self, node):
+        output = []
+        tests = self.visit(node.test)
+        bodys = self.visit(node.body)
+        orelses = self.visit(node.orelse)
+
+        output.extend(tests[:-1])
+        output.extend(bodys[:-1])
+        output.extend(orelses[:-1])
+        expr = Expression(
+            "({}) ? ({}) : ({})".format(
+                tests[-1].value,
+                bodys[-1].value,
+                orelses[-1].value
+            ),
+            context=self.context
+        )
+        output.append(expr)
+        return output
+
+    def visit_Compare(self, node):
+        options = {
+            ast.Eq: '==',
+            ast.NotEq: '!=',
+            ast.Lt: '<',
+            ast.LtE: '<=',
+            ast.Gt: '>',
+            ast.GtE: '>=',
+        }
+        lefts = self.visit(node.left)
+        output = lefts[:-1]
+        code = "({})".format(lefts[-1].value)
+        for comparator, op in zip(node.comparators, node.ops):
+            comparators = self.visit(comparator)
+            output.extend(comparators[:-1])
+            op = type(op)
+            if op not in options:
+                raise ValueError('Unknown comparator {}'.format(op))
+
+            code += " {} ({})".format(options[op], comparators[-1].value)
+
+        expr = Expression(code, context=self.context)
+        output.append(expr)
+        return output
 
     def _get_suffix(self):
         """ Get unique suffix for variables insude the function."""
