@@ -587,7 +587,7 @@ class StreamExpression(Expression):
         expression = Expression(code, context=self.context)
         return expression
 
-    def transform_Prev(self, output, inputs):
+    def transform_PREV(self, output, inputs):
         """ Previous value of input"""
         value = inputs[0].title
         code = "{o} = prev{o}; prev{o} = {v}"
