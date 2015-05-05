@@ -3,6 +3,7 @@ import argparse
 import itertools
 import tempfile
 import sys
+import six
 
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
@@ -151,8 +152,8 @@ def pretty():
     with open(file_name, 'r') as f:
         for line in f:
             print("|".join([
-                (" {} ".format(str(field))).ljust(x)
-                for x, field in itertools.izip(
+                (" {} ".format(str(field or ''))).ljust(x)
+                for x, field in six.moves.zip_longest(
                     column_widths, line.rstrip('\n').split()
                 )
             ]))
