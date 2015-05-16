@@ -1,9 +1,12 @@
 """ Scripts of tool."""
 import argparse
 import itertools
-import tempfile
-import sys
+import os
+import re
 import six
+import subprocess
+import sys
+import tempfile
 
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
@@ -145,8 +148,8 @@ def pretty():
 
     column_widths = [x + 2 for x in column_widths]
     print("|".join([
-        (" {} ".format(str(f))).ljust(x)
-        for x, f in itertools.izip(column_widths, fields)
+        (" {} ".format(str(_f))).ljust(x)
+        for x, _f in itertools.izip(column_widths, fields)
     ]))
     print("+".join(["-" * x for x in column_widths]))
     with open(file_name, 'r') as f:
@@ -157,3 +160,63 @@ def pretty():
                     column_widths, line.rstrip('\n').split()
                 )
             ]))
+    os.remove(file_name)
+
+
+def plot():
+    """ Use gnuplot with tab files.
+
+    Usage
+    -----
+    cat file.tsv | tplot -e '<optional command>' script.gnu
+
+    Input file should have name: '__input'
+    Fields should start with: '__', for example instead of a use __a.
+
+    Examples
+    --------
+
+    cat data.tsv | tplot -c script.gnu  -e "set output 'output2.png'"
+    cat data.tsv | tplot -c script.gnu > ouput3.png
+
+    """
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Plot file from stdin with gnuplot"
+    )
+    parser.add_argument('-c', '--gnuplot-script', required=True,
+                        help="file with gnuplot commangs")
+    parser.add_argument('-e', '--gnuplot-commands',
+                        help="command1; command2; ...")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="Print result program")
+
+    args = parser.parse_args()
+    header = sys.stdin.readline()
+    fields = DataDescription.parse(header).fields
+    file_name = tempfile.mkstemp()[1]
+
+    # Write data file to temporary location without header.
+    # NOTE: gnuplot draw from standard input feature could not be used because
+    # file mith be used several times (subplots)
+    with open(file_name, 'w') as f:
+        for line in sys.stdin:
+            f.write(line)
+
+    script_file_name = tempfile.mkstemp()[1]
+    substitutors = [re.compile("__" + field.title) for field in fields]
+    with open(script_file_name, 'w') as f:
+        with open(args.gnuplot_script) as source:
+            for line in source:
+                line = re.sub('__input', file_name, line)
+                for index, substitutor in enumerate(substitutors):
+                    line = substitutor.sub(str(index + 1), line)
+
+                f.write(line)
+
+    command = 'gnuplot{} -c {}'.format(
+        ' -e "{}"'.format(args.gnuplot_commands) if args.gnuplot_commands else '',
+        script_file_name)
+    subprocess.call(command, shell=True)
+    os.remove(script_file_name)
+    os.remove(file_name)
