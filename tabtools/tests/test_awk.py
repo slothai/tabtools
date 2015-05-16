@@ -7,7 +7,7 @@ except ImportError:
 
 
 from ..import six
-from ..awk import Expression, AWKBaseProgram
+from ..awk import Expression, StreamExpression, AWKBaseProgram
 from ..files import FileList
 
 
@@ -90,7 +90,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
     def test_transform_function_sum(self):
         expression = "a = SUM(x)"
         context = dict(x=Expression('$1', 'x'))
-        output = Expression.from_str(expression, context)
+        output = StreamExpression.from_str(expression, context)
         self.assertEqual(output[-1].modules, set())
         compare(
             "; ".join([str(o) for o in output]),
@@ -100,15 +100,13 @@ class TestAWKNodeTransformer(unittest.TestCase):
     def test_transform_function_sum_window(self):
         expression = "a = SUM(x, 2)"
         context = dict(x=Expression('$1', 'x'))
-
-        with patch('tabtools.awk.Expression._get_suffix', return_value=""):
-            output = Expression.from_str(expression, context)
+        output = StreamExpression.from_str(expression, context)
         self.assertEqual(output[-1].modules, set())
         compare(
             "; ".join([str(o) for o in output]),
-            "__var_1 = $1; __var_2 = 2; __sum_mod = NR % 2; " +
-            "__var_3 += (__var_1 - __sum_array[__sum_mod]); " +
-            "__sum_array[__sum_mod] = __var_1; a = __var_3"
+            '__var_1 = $1; __var_2 = 2; __sum_mod__var_3 = NR % 2; '
+            '__var_3 += (__var_1 - __sum_array__var_3[__sum_mod__var_3]); '
+            '__sum_array__var_3[__sum_mod__var_3] = __var_1; a = __var_3'
         )
 
     def test_transform_strftime(self):
@@ -117,8 +115,8 @@ class TestAWKNodeTransformer(unittest.TestCase):
         output = Expression.from_str(expression, context)
         compare(
             "; ".join([str(o) for o in output]),
-            "__var_1 = %U; __var_2 = $1; __var_3 = strftime(__var_1, __var_2);"
-            " a = __var_3"
+            '__var_1 = "%U"; __var_2 = $1; __var_3 = '
+            'strftime(__var_1, __var_2); a = __var_3'
         )
 
     @unittest.skip("Refactoring")
@@ -181,7 +179,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
     @unittest.skip("Need to mock subprocess.call output receiver")
     def test_file(self):
         expressions = ["epoch = DateEpoch(date)"]
-        program = AWKProgram(
+        program = AWKBaseProgram(
             self.files.description.fields, output_expressions=expressions)
         self.files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
         self.stdout.getvalue()
