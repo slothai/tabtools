@@ -44,6 +44,7 @@ setup(
             'tawk = tabtools.scripts:awk',
             'tgrp = tabtools.scripts:grp',
             'tpretty = tabtools.scripts:pretty',
+            'tplot = tabtools.scripts:plot',
         ]
     },
 
