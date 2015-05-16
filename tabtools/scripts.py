@@ -204,19 +204,31 @@ def plot():
             f.write(line)
 
     script_file_name = tempfile.mkstemp()[1]
-    substitutors = [re.compile("__" + field.title) for field in fields]
+
+    substitutors = [
+        (index, re.compile("__" + title)) for title, index in sorted([
+            (field.title, index) for index, field in enumerate(fields)
+        ], reverse=True)
+    ]
     with open(script_file_name, 'w') as f:
         with open(args.gnuplot_script) as source:
             for line in source:
                 line = re.sub('__input', file_name, line)
-                for index, substitutor in enumerate(substitutors):
+                for index, substitutor in substitutors:
                     line = substitutor.sub(str(index + 1), line)
 
                 f.write(line)
 
     command = 'gnuplot{} -c {}'.format(
-        ' -e "{}"'.format(args.gnuplot_commands) if args.gnuplot_commands else '',
+        ' -e "{}"'.format(args.gnuplot_commands)
+        if args.gnuplot_commands else '',
         script_file_name)
+
+    if args.debug:
+        sys.stdout.write("%s\n" % command)
+        with open(script_file_name) as f:
+            sys.stdout.write(f.read())
+
     subprocess.call(command, shell=True)
     os.remove(script_file_name)
     os.remove(file_name)
