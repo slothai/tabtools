@@ -32,6 +32,22 @@ def cat():
     files("cat")
 
 
+def ttail():
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Tail files and print on the standard output"
+    )
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument('-n', '--lines', default=10)
+    args = parser.parse_args()
+    files = FileList(args.files)
+    sys.stdout.write(files.header + '\n')
+    sys.stdout.flush()
+    command = "tail" + " -n{}".format(args.lines) if args.lines else ""
+    files(command)
+
+
 def srt():
     """ sort function.
 
