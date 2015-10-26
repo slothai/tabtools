@@ -29,6 +29,15 @@ Tests
 .. code-block:: python
 
     tox
+    
+Notes
+-----
+
+csv to tsv:
+
+.. code-block:: bash
+
+    cat <(printf "# ") <(cat file.csv | tr "," "\t")
 
 Preface
 -------
