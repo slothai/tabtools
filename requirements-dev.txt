@@ -1,0 +1,4 @@
+-r requirements.txt
+wheel
+nose
+testfixtures==4.1.2
