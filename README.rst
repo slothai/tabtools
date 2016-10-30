@@ -1,5 +1,5 @@
 .. image:: https://travis-ci.org/pavlov99/tabtools.png
-    :target: https://travis-ci.org/pavlov99/tabtools
+    :target: https://travis-ci.org/pavlov99/tabtools.svg?branch=master
     :alt: Build Status
 
 .. image:: https://coveralls.io/repos/pavlov99/tabtools/badge.png
