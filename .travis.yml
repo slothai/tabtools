@@ -5,7 +5,8 @@ python: "2.7"
 env:
     - TOXENV=py27
     - TOXENV=py33
-    - TOXENV=cov
+    - TOXENV=py34
+    - TOXENV=py35
 
 branches:
     only:

@@ -7,13 +7,15 @@ RED=\033[0;31m
 GREEN=\033[0;32m
 NC=\033[0m
 
-all: $(ENV)
-	@echo "Virtualenv is installed"
-
 .PHONY: help
 # target: help - Display callable targets
 help:
 	@egrep "^# target:" [Mm]akefile
+
+
+all: env
+	@echo "Virtualenv is installed"
+
 
 .PHONY: clean
 # target: clean - Display callable targets
@@ -48,6 +50,6 @@ test: clean
 lint:
 	@tox -e pylama
 
-$(ENV):
+env:
 	virtualenv --no-site-packages .env
-	$(ENV)/bin/pip install -r requirements.txt
+	$(ENV)/bin/pip install -r requirements-dev.txt
