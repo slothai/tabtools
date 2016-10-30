@@ -8,6 +8,8 @@
 
 Documentation: http://tabtools.readthedocs.org
 
+Task board: https://waffle.io/pavlov99/tabtools
+
 Install
 -------
 
