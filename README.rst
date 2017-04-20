@@ -1,3 +1,6 @@
+.. image:: https://badge.waffle.io/pavlov99/tabtools.png?label=ready&title=Ready 
+ :target: https://waffle.io/pavlov99/tabtools
+ :alt: 'Stories in Ready'
 .. image:: https://travis-ci.org/pavlov99/tabtools.png
     :target: https://travis-ci.org/pavlov99/tabtools.svg?branch=master
     :alt: Build Status
