@@ -48,9 +48,24 @@ class TestField(unittest.TestCase):
         with self.assertRaises(ValueError):
             Field.parse("a str")
 
-    def test_merge(self):
+    def test_combine_types(self):
+        self.assertEqual(Field.combine_types('null'), 'null')
+        self.assertEqual(Field.combine_types('null', 'str'), 'null')
+        self.assertEqual(Field.combine_types('str', 'str'), 'str')
+        self.assertEqual(Field.combine_types('bool', 'int'), 'int')
+        self.assertEqual(Field.combine_types('int', 'float'), 'float')
+        self.assertEqual(Field.combine_types('float', 'str'), 'str')
+        self.assertEqual(Field.combine_types('bool', 'int', 'float', 'str'), 'str')
+
+    def test_merge_simple(self):
         self.assertEqual(Field.merge(Field("a")), Field("a"))
         self.assertEqual(Field.merge(Field("a"), Field("a")), Field("a"))
+
+    def test_merge_different_names(self):
+        self.assertEqual(Field.merge(Field("a"), Field("b")), Field("a"))
+        self.assertEqual(Field.merge(Field("b"), Field("a")), Field("b"))
+
+    def test_merge_different_types(self):
         self.assertEqual(
             Field.merge(Field("a", "str"), Field("a")),
             Field("a")
@@ -79,8 +94,6 @@ class TestField(unittest.TestCase):
     def test_merge_error(self):
         with self.assertRaises(ValueError):
             Field.merge()
-            Field.merge(Field("a"), Field("b"))
-            Field.merge(Field("a", "str"), Field("b", "str"))
 
 
 class TestOrderedField(unittest.TestCase):
