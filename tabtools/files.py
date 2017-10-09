@@ -21,11 +21,6 @@ class File(object):
         self.fd = fd
 
     @property
-    def descriptor(self):
-        """ Return file descriptor in system."""
-        return "/dev/fd/{}".format(self.fd.fileno())
-
-    @property
     def proxy(self):
         """ Return file with actual type."""
         try:
@@ -43,20 +38,54 @@ class StreamFile(File):
 
     """ General input stream.
 
-    .. note:Stream file could not be read twice.
+    .. note: StreamFile could be read only once, seek is not allowed.
 
     """
+    def __init__(self, fd):
+        super(StreamFile, self).__init__(fd)
+        self._first_line = self.readline()
+        self._first_data_line = self.readline() if self.has_header else self._first_line
+
+    def readline(self):
+        """Read one line and return it."""
+        chars = []
+        while True:
+            char = os.read(self.fd.fileno(), 1).decode('utf8')
+            if char is None or char == '' or char == '\n':
+                break
+            chars.append(char)
+
+        if chars:
+            return ''.join(chars)
+        else:
+            return None
+
+    @property
+    def has_header(self):
+        if self._first_line is None:
+            return False
+
+        try:
+            DataDescription.parse(self._first_line)
+            return True
+        except ValueError:
+            return False
 
     @property
     def header(self):
         """ Return stream file header."""
-        header = ""
-        while True:
-            char = os.read(self.fd.fileno(), 1).decode('utf8')
-            if char is None or char == '\n':
-                break
-            header += char
-        return header
+        return self._first_line
+
+    @property
+    def autoheader(self):
+        return DataDescription.generate_header(self._first_data_line)
+
+    @property
+    def body_descriptor(self):
+        """ Return file descriptor in system."""
+        descriptor = "<(echo \"{}\") /dev/fd/{}".format(
+            self._first_data_line, self.fd.fileno())
+        return descriptor
 
 
 class RegularFile(File):
@@ -75,7 +104,7 @@ class RegularFile(File):
         return header
 
     @property
-    def descriptor(self):
+    def body_descriptor(self):
         """ Return regular file descriptor.
 
         Regular file has header, descriptor consists of lines starting
@@ -91,14 +120,16 @@ class FileList(list):
 
     """ List of Files."""
 
-    def __init__(self, files=None):
+    def __init__(self, files=None, header=None, should_generate_header=None):
         files = files or [sys.stdin]
         super(FileList, self).__init__([File(f).proxy for f in files])
+        self._header = header
+        self.should_generate_header = should_generate_header or False
 
     @property
-    def descriptors(self):
+    def body_descriptors(self):
         """ Return list of file descriptors."""
-        return [f.descriptor for f in self]
+        return [f.body_descriptor for f in self]
 
     @cached_property
     def description(self):
@@ -112,8 +143,16 @@ class FileList(list):
         DataDescription
 
         """
-        return DataDescription.merge(
-            *[DataDescription.parse(f.header) for f in self])
+        if self._header:
+            return DataDescription.parse(self._header)
+        else:
+            headers = [
+                f.autoheader if self.should_generate_header else f.header
+                for f in self
+            ]
+            return DataDescription.merge(*[
+                DataDescription.parse(header) for header in headers
+            ])
 
     @property
     def header(self):
@@ -131,7 +170,7 @@ class FileList(list):
         ]
         args = list(args)
         subcommand = " ".join(
-            ['LC_ALL=C', args.pop(0)] + args + self.descriptors
+            ['LC_ALL=C', args.pop(0)] + args + self.body_descriptors
         )
         command.append(subcommand)
         subprocess.call(command)

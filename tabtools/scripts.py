@@ -25,8 +25,18 @@ def cat():
     )
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument('-H', '--header', nargs='?', default='', type=str, help="Header of the output data")
+    # If args.header is '' (default), get it from input files.
+    # If header is None: deduce it from the input
+    # If header is set, user whatever is set.
+
     args = parser.parse_args()
-    files = FileList(args.files)
+    kwargs = {}
+    if args.header is not None and len(args.header) > 0:
+        kwargs["header"] = args.header
+    if args.header is None:
+        kwargs["should_generate_header"] = True
+    files = FileList(args.files, **kwargs)
     sys.stdout.write(files.header + '\n')
     sys.stdout.flush()
     files("cat")
