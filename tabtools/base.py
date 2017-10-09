@@ -50,13 +50,28 @@ class Field(object):
 
         """
         if field.endswith(":"):
-            raise ValueError("field does not have type: {}".format(field))
+            raise ValueError("field does not have a type: {}".format(field))
 
         return Field(*field.split(":"))
 
     @classmethod
+    def combine_types(cls, *types):
+        """Deduce result type from a list of types.
+
+        :param tuple(str): field types.
+        :return: str
+
+        """
+        ordered_types = [t[0] for t in cls.TYPES]
+        result = ordered_types[max(ordered_types.index(t) for t in types)]
+        return result
+
+    @classmethod
     def merge(cls, *fields):
-        """ Merge fields with the same name. Handle result type.
+        """Merge fields and handle the result type.
+
+        This operation works as SQL union: if field names are different, pick
+        the first one. If types are different, deduce a result type.
 
         :param tuple(Field): fields
         :return Field:
@@ -66,14 +81,8 @@ class Field(object):
         if not fields:
             raise ValueError("At least one field is required")
 
-        field_titles = {f.title for f in fields}
-        if len(field_titles) != 1:
-            raise ValueError("Fields titles are not equal {} ".format(
-                field_titles))
-
-        ordered_types = [t[0] for t in cls.TYPES]
-        t = ordered_types[max(ordered_types.index(f.type) for f in fields)]
-        return Field(fields[0].title, t)
+        result_type = cls.combine_types(*[f.type for f in fields])
+        return Field(fields[0].title, result_type)
 
 
 class OrderedField(object):
@@ -314,6 +323,12 @@ class DataDescription(object):
             self.meta == other.meta
 
     @classmethod
+    def generate_header(cls, line):
+        return "# " + cls.DELIMITER.join(
+            "f{}".format(i) for i, f in enumerate(line.split(cls.DELIMITER))
+        )
+
+    @classmethod
     def parse(cls, header):
         """ Parse string into DataDescription object.
 
@@ -322,7 +337,7 @@ class DataDescription(object):
         """
         if not header.startswith(cls.PREFIX):
             raise ValueError(
-                "Header {} should start with {}".format(header, cls.PREFIX))
+                "Header '{}' should start with {}".format(header, cls.PREFIX))
 
         fields_subheaders_and_meta = header[len(cls.PREFIX):].split(
             "#META: ", 1)
