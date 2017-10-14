@@ -2,9 +2,8 @@
 import os
 import sys
 import subprocess
-from pipes import quote
 from .base import DataDescription
-from .utils import has_stdin, cached_property
+from .utils import cached_property
 
 
 class File(object):

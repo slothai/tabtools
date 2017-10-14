@@ -1,12 +1,3 @@
-import select
-import sys
-
-
-def has_stdin():
-    """ Return true if there is sys.stdin."""
-    return bool(select.select([sys.stdin], [], [], 0.0)[0])
-
-
 class Choices(object):
 
     """ Choices."""
