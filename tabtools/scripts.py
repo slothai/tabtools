@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 
+from tabtools import __version__
 from .six import zip_longest
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
@@ -14,6 +15,9 @@ from .awk import AWKStreamProgram, AWKGroupProgram
 
 
 def add_common_arguments(parser):
+    parser.add_argument(
+        '--version', action='version',
+        version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     parser.add_argument(
