@@ -22,7 +22,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            python -m venv venv
+            [ -d venv ] || python -m venv venv
             . venv/bin/activate
             pip install -r requirements-test.txt
       - save_cache:
@@ -47,23 +47,23 @@ jobs:
     docker:
       - image: circleci/python:3.6
   test-2.7:
-    <<: *test-template
     docker:
       - image: circleci/python:2.7
+    working_directory: ~/repo
     steps:
       - checkout
       # Download and cache dependencies from requirements-test + mock
       - restore_cache:
           keys:
-            - dependencies-{{ checksum "requirements-test.txt" }}
+            - dependencies-{{ checksum "requirements-py2-test.txt" }}
       - run:
           name: install dependencies
           command: |
-            virtualenv venv
+            [ -d venv ] || virtualenv venv
             . venv/bin/activate
             pip install -r requirements-test.txt
             pip install mock==2.0.0
       - save_cache:
           paths:
             - ./venv
-          key: dependencies-{{ checksum "requirements-test.txt" }}
+          key: dependencies-{{ checksum "requirements-py2-test.txt" }}
