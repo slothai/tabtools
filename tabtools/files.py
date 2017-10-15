@@ -19,6 +19,30 @@ class File(object):
         """
         self.fd = fd
 
+    def readline(self):
+        raise NotImplementedError("Implement this method in derided class")
+
+    @property
+    def has_header(self):
+        if self._first_line is None:
+            return False
+
+        try:
+            DataDescription.parse(self._first_line)
+            return True
+        except ValueError:
+            return False
+
+    @property
+    def header(self):
+        if not self.has_header:
+            raise ValueError("File {} does not have header.".format(self.fd))
+        return self._first_line
+
+    @property
+    def autoheader(self):
+        return DataDescription.generate_header(self._first_data_line)
+
     @property
     def proxy(self):
         """ Return file with actual type."""
@@ -43,7 +67,8 @@ class StreamFile(File):
     def __init__(self, fd):
         super(StreamFile, self).__init__(fd)
         self._first_line = self.readline()
-        self._first_data_line = self.readline() if self.has_header else self._first_line
+        self._first_data_line = self.readline() if self.has_header \
+            else self._first_line
 
     def readline(self):
         """Read one line and return it."""
@@ -58,26 +83,6 @@ class StreamFile(File):
             return ''.join(chars)
         else:
             return None
-
-    @property
-    def has_header(self):
-        if self._first_line is None:
-            return False
-
-        try:
-            DataDescription.parse(self._first_line)
-            return True
-        except ValueError:
-            return False
-
-    @property
-    def header(self):
-        """ Return stream file header."""
-        return self._first_line
-
-    @property
-    def autoheader(self):
-        return DataDescription.generate_header(self._first_data_line)
 
     @property
     def body_descriptor(self):
@@ -99,13 +104,17 @@ class RegularFile(File):
     http://en.wikipedia.org/wiki/Unix_file_types
 
     """
+    def __init__(self, fd):
+        super(RegularFile, self).__init__(fd)
+        self._first_line = self.readline()
+        self._first_data_line = self.readline() if self.has_header \
+            else self._first_line
 
-    @property
-    def header(self):
+    def readline(self):
         """ Return regular file header."""
         with open(self.fd.name) as f:
-            header = f.readline()
-        return header
+            line = f.readline()
+        return line
 
     @property
     def body_descriptor(self):
@@ -116,8 +125,10 @@ class RegularFile(File):
 
         """
         os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
-        return "<( tail -qn+2 {} )".format(
-            super(RegularFile, self).descriptor)
+        if self.has_header:
+            return "<( tail -qn+2 {} )".format(self.fd)
+        else:
+            return self.fd
 
 
 class FileList(list):
