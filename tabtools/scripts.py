@@ -13,6 +13,20 @@ from .files import FileList
 from .awk import AWKStreamProgram, AWKGroupProgram
 
 
+def add_common_arguments(parser):
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument(
+        '-H', '--header', nargs='?', default='', type=str,
+        help="Header of the output data")
+    # If args.header is '' (default), get it from input files.
+    # If header is None: deduce it from the input
+    # If header is set, user whatever is set.
+    parser.add_argument(
+        '-N', '--no-header', action='store_true', help="Do not output header")
+    return parser
+
+
 def cat():
     """ cat function.
 
@@ -23,12 +37,7 @@ def cat():
         add_help=True,
         description="Concatenate files and print on the standard output"
     )
-    parser.add_argument(
-        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
-    parser.add_argument('-H', '--header', nargs='?', default='', type=str, help="Header of the output data")
-    # If args.header is '' (default), get it from input files.
-    # If header is None: deduce it from the input
-    # If header is set, user whatever is set.
+    add_common_arguments(parser)
 
     args = parser.parse_args()
     kwargs = {}
@@ -37,12 +46,15 @@ def cat():
     if args.header is None:
         kwargs["should_generate_header"] = True
     files = FileList(args.files, **kwargs)
-    sys.stdout.write(files.header + '\n')
-    sys.stdout.flush()
+
+    if not args.no_header:
+        sys.stdout.write(files.header + '\n')
+        sys.stdout.flush()
+
     files("cat")
 
 
-def ttail():
+def tail():
     parser = argparse.ArgumentParser(
         add_help=True,
         description="Tail files and print on the standard output"
@@ -50,11 +62,21 @@ def ttail():
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     parser.add_argument('-n', '--lines', default=10)
+    add_common_arguments(parser)
+
     args = parser.parse_args()
-    files = FileList(args.files)
-    sys.stdout.write(files.header + '\n')
-    sys.stdout.flush()
-    command = "tail" + " -n{}".format(args.lines) if args.lines else ""
+    kwargs = {}
+    if args.header is not None and len(args.header) > 0:
+        kwargs["header"] = args.header
+    if args.header is None:
+        kwargs["should_generate_header"] = True
+    files = FileList(args.files, **kwargs)
+
+    if not args.no_header:
+        sys.stdout.write(files.header + '\n')
+        sys.stdout.flush()
+
+    command = "tail -q" + " -n{}".format(args.lines) if args.lines else ""
     files(command)
 
 
@@ -71,8 +93,16 @@ def srt():
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
     parser.add_argument('-k', '--keys', action="append", default=[])
+    add_common_arguments(parser)
+
     args = parser.parse_args()
-    files = FileList(args.files)
+    kwargs = {}
+    if args.header is not None and len(args.header) > 0:
+        kwargs["header"] = args.header
+    if args.header is None:
+        kwargs["should_generate_header"] = True
+    files = FileList(args.files, **kwargs)
+
     fields = [f.title for f in files.description.fields]
     order = [OrderedField.parse(key) for key in args.keys]
     options = [
@@ -80,8 +110,11 @@ def srt():
             fields.index(f.title) + 1, f.sort_type, f.sort_order)
         for f in order
     ]
-    sys.stdout.write(files.header + '\n')
-    sys.stdout.flush()
+
+    if not args.no_header:
+        sys.stdout.write(files.header + '\n')
+        sys.stdout.flush()
+
     files("sort", *options)
 
 
