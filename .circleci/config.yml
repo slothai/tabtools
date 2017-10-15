@@ -22,7 +22,7 @@ jobs:
       - run:
           name: install dependencies
           command: |
-            [ -d venv ] || python -m venv venv
+            python -m venv venv
             . venv/bin/activate
             pip install -r requirements-test.txt
       - save_cache:
@@ -55,7 +55,7 @@ jobs:
       # Download and cache dependencies from requirements-test + mock
       - restore_cache:
           keys:
-            - dependencies-{{ checksum "requirements-py2-test.txt" }}
+            - dependencies-py27-{{ checksum "requirements-test.txt" }}
       - run:
           name: install dependencies
           command: |
@@ -66,4 +66,4 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: dependencies-{{ checksum "requirements-py2-test.txt" }}
+          key: dependencies-py27-{{ checksum "requirements-test.txt" }}
