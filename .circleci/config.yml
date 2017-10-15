@@ -1,8 +1,13 @@
 version: 2
-dependencies:
-  override:
-    - pip install tox tox-pyenv
-    - pyenv local 2.7.9 3.3.3 3.4.3 3.5.0 3.6.0
-test:
-  override:
-    - tox
+jobs:
+  build:
+    docker:
+      - image: circleci/python:2.7
+    steps:
+      - checkout
+      - run:
+          name: Install tox
+          command: pip install tox
+      - run:
+          name: Test with tox
+          command: tox
