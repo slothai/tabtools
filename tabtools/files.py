@@ -82,7 +82,12 @@ class StreamFile(File):
     @property
     def body_descriptor(self):
         """ Return file descriptor in system."""
-        descriptor = "<(echo \"{}\") /dev/fd/{}".format(
+        # NOTE: it is important to combine two file descriptors into one.
+        # Otherwise commands like tail would treat both stream independently and
+        # produce incorrect result (e.g. extra line for tail).
+        # This looks not great as one need to combile a line (echo-ed) with the
+        # rest of the stream into one stream.
+        descriptor = "<(cat <(echo \"{}\") <(cat /dev/fd/{}))".format(
             self._first_data_line, self.fd.fileno())
         return descriptor
 
