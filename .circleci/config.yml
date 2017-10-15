@@ -18,7 +18,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - dependencies-{{ checksum "requirements-test.txt" }}
+            - dependencies-{{ $CIRCLE_JOB }}-{{ checksum "requirements-test.txt" }}
       - run:
           name: install dependencies
           command: |
@@ -28,7 +28,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: dependencies-{{ checksum "requirements-test.txt" }}
+          key: dependencies-{{ $CIRCLE_JOB }}-{{ checksum "requirements-test.txt" }}
         
       # run tests!
       - run:
@@ -67,3 +67,7 @@ jobs:
           paths:
             - ./venv
           key: dependencies-py27-{{ checksum "requirements-test.txt" }}
+      # run tests!
+      - run:
+          name: run tests
+          command: venv/bin/nosetests
