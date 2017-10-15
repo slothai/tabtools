@@ -2,11 +2,12 @@ import unittest
 from testfixtures import compare
 try:
     from unittest.mock import patch
+    from io import StringIO
 except ImportError:
     from mock import patch
+    from StringIO import StringIO
 
 
-from ..import six
 from ..awk import Expression, StreamExpression, AWKBaseProgram
 from ..files import FileList
 
@@ -15,7 +16,7 @@ class TestAWKNodeTransformer(unittest.TestCase):
     def setUp(self):
         self.fd = open('tabtools/tests/files/sample1.tsv')
         self.files = FileList([self.fd])
-        self.patcher = patch('sys.stdout', new_callable=six.StringIO)
+        self.patcher = patch('sys.stdout', new_callable=StringIO)
         self.stdout = self.patcher.start()
 
     def tearDown(self):

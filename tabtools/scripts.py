@@ -3,11 +3,11 @@ import argparse
 import itertools
 import os
 import re
-import six
 import subprocess
 import sys
 import tempfile
 
+from .six import zip_longest
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
 from .awk import AWKStreamProgram, AWKGroupProgram
@@ -215,7 +215,7 @@ def pretty():
         for line in f:
             print("|".join([
                 (" {} ".format(str(field or ''))).ljust(x)
-                for x, field in six.moves.zip_longest(
+                for x, field in zip_longest(
                     column_widths, line.rstrip('\n').split()
                 )
             ]))
