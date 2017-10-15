@@ -3,11 +3,37 @@ jobs:
   build:
     docker:
       - image: circleci/python:2.7
+
+    working_directory: ~/repo
+
     steps:
       - checkout
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "requirements-dev.txt" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
       - run:
-          name: Install tox
-          command: pip install tox
+          name: install dependencies
+          command: |
+            python -m venv venv
+            . venv/bin/activate
+            pip install -r requirements.txt
+
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "requirements.txt" }}
+        
+      # run tests!
       - run:
-          name: Test with tox
-          command: tox
+          name: run tests
+          command: |
+            . venv/bin/activate
+            python nosetests
+
+      - store_artifacts:
+          path: test-reports
+          destination: test-reports
