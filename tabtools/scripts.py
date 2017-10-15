@@ -20,12 +20,12 @@ def add_common_arguments(parser):
         version='%(prog)s {version}'.format(version=__version__))
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
-    parser.add_argument(
-        '-H', '--header', nargs='?', default='', type=str,
-        help="Header of the output data")
     # If args.header is '' (default), get it from input files.
     # If header is None: deduce it from the input
     # If header is set, user whatever is set.
+    parser.add_argument(
+        '-H', '--header', nargs='?', default='', type=str,
+        help="Header of the output data")
     parser.add_argument(
         '-N', '--no-header', action='store_true', help="Do not output header")
     return parser
