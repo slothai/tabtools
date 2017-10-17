@@ -18,7 +18,7 @@ jobs:
       # Download and cache dependencies
       - restore_cache:
           keys:
-            - dependencies-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
+            - dependencies-{{ arch }}-{{ .Branch }}-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
       - run:
           name: install dependencies
           command: |
@@ -28,7 +28,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: dependencies-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
+          key: dependencies-{{ arch }}-{{ .Branch }}-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
         
       # run tests!
       - run:
@@ -55,7 +55,7 @@ jobs:
       # Download and cache dependencies from requirements-test + mock
       - restore_cache:
           keys:
-            - dependencies-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
+            - dependencies-{{ arch }}-{{ .Branch }}-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
       - run:
           name: install dependencies
           command: |
@@ -66,7 +66,7 @@ jobs:
       - save_cache:
           paths:
             - ./venv
-          key: dependencies-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
+          key: dependencies-{{ arch }}-{{ .Branch }}-{{ .Environment.PYTHON_VERSION }}-{{ checksum "requirements-test.txt" }}
       # run tests!
       - run:
           name: run tests
