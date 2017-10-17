@@ -33,7 +33,7 @@ jobs:
       # run tests!
       - run:
           name: run tests
-          command: venv/bin/nosetests
+          command: venv/bin/nose2
   test-3.4:
     <<: *test-template
     docker:
@@ -70,4 +70,4 @@ jobs:
       # run tests!
       - run:
           name: run tests
-          command: venv/bin/nosetests
+          command: venv/bin/nose2

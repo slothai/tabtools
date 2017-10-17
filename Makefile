@@ -1,7 +1,5 @@
 ENV=$(CURDIR)/.env
 BIN=$(ENV)/bin
-PYTHON=$(ENV)/bin/python
-PYVERSION=$(shell pyversions --default)
 
 RED=\033[0;31m
 GREEN=\033[0;32m
@@ -43,13 +41,15 @@ upload:
 .PHONY: test
 # target: test - Runs tests
 test: clean
-	NOSE_REDNOSE=1 $(BIN)/nosetests
+	$(BIN)/nose2
 
 .PHONY: lint
 # target: lint - audit code
 lint:
 	@tox -e pylama
 
+.PHONY: env
+# target: env - install python develpment packages
 env:
-	virtualenv --no-site-packages .env
+	[ -d $(ENV) ] || virtualenv --no-site-packages $(ENV)
 	$(ENV)/bin/pip install -r requirements-dev.txt
