@@ -1,6 +1,6 @@
-| Build | Coverage | Documentation  |
-|:---:|:---:|:---:|
-| [![CircleCI](https://circleci.com/gh/pavlov99/tabtools/tree/master.svg?style=svg)](https://circleci.com/gh/pavlov99/tabtools/tree/master) | ![](https://coveralls.io/repos/pavlov99/tabtools/badge.png) | [![Readthedocs](https://readthedocs.org/projects/tabtools/badge/?version=latest)](http://tabtools.readthedocs.io/en/latest/?badge=latest)
+| Build | Coverage | Documentation  | PyPI | CodeHealth |
+|:---:|:---:|:---:|:---:|:---:|
+| [![CircleCI](https://circleci.com/gh/pavlov99/tabtools/tree/master.svg?style=svg)](https://circleci.com/gh/pavlov99/tabtools/tree/master) | ![](https://coveralls.io/repos/pavlov99/tabtools/badge.png) | [![Readthedocs](https://readthedocs.org/projects/tabtools/badge/?version=latest)](http://tabtools.readthedocs.io/en/latest/?badge=latest) | [![pypi](https://img.shields.io/pypi/v/tabtools.svg)](https://pypi.org/project/tabtools/) | [![Code Health](https://landscape.io/github/pavlov99/tabtools/master/landscape.svg?style=flat)](https://landscape.io/github/pavlov99/tabtools/master) |
 
 Task board: https://waffle.io/pavlov99/tabtools
 
