@@ -19,8 +19,10 @@ def read(fname):
     except IOError:
         return ""
 
-install_requires = [l for l in read('requirements.txt').split('\n')
-                    if l and not l.startswith('#')]
+install_requires = [
+    l for l in read('requirements.txt').split('\n')
+    if l and not l.startswith('#')
+]
 
 setup(
     name="tabtools",
@@ -33,10 +35,10 @@ setup(
 
     # metadata for upload to PyPI
     author="Kirill Pavlov",
-    author_email="kirill.pavlov@phystech.edu",
+    author_email="k@p99.io",
     url="https://github.com/pavlov99/tabtools",
-    description="Utility to operate with tab separated files",
-    long_description=read('README.rst'),
+    description="Tools for tab separated files manipulation in command line",
+    long_description=read('README.md'),
     entry_points={
         "console_scripts": [
             'tcat = tabtools.scripts:cat',
@@ -48,7 +50,6 @@ setup(
             'tplot = tabtools.scripts:plot',
         ]
     },
-
     # Full list:
     # https://pypi.python.org/pypi?%3Aaction=list_classifiers
     classifiers=[
@@ -58,8 +59,10 @@ setup(
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python :: 2.7",
-        "Programming Language :: Python :: 3.2",
         "Programming Language :: Python :: 3.3",
+        "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
     license="MIT",
