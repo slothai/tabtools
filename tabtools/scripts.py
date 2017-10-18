@@ -140,7 +140,7 @@ def awk():
     files = FileList(args.files)
     program = AWKStreamProgram(
         files.description.fields,
-        filters=args.filter,
+        filter_expressions=args.filter,
         output_expressions=args.output
     )
 

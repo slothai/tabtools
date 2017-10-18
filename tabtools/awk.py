@@ -94,7 +94,7 @@ class AWKStreamProgram(AWKBaseProgram):
     ------
     fields: tabtools.base.DataDescription.fields
     output_expressions: list, optional
-    filters: list, optional
+    filter_expressions: list, optional
 
     context: dict
         title -> (index, [type]), if there is no type, str is used.
@@ -111,15 +111,19 @@ class AWKStreamProgram(AWKBaseProgram):
 
     """
 
-    def __init__(self, fields, filters=None, output_expressions=None):
+    def __init__(self, fields, filter_expressions=None, output_expressions=None):
         self.fields = fields
-        self.filters = filters or []
+        self.filter_expressions = filter_expressions or []
         self.output_expressions = output_expressions or []
         self.context = {
             field.title: Expression('${}'.format(index + 1), title=field.title)
             for index, field in enumerate(self.fields)
         }
 
+        self.filters = StreamExpression.from_str(
+            "; ".join(self.filter_expressions),
+            self.context
+        )
         self.output = StreamExpression.from_str(
             "; ".join(self.output_expressions),
             self.context
@@ -127,11 +131,19 @@ class AWKStreamProgram(AWKBaseProgram):
 
     @property
     def output_code(self):
-        result = ";\n".join([str(o) for o in self.output])
-        result += ";\nprint " + ", ".join([
+        result = ";\n".join([str(o) for o in self.output]) + ';\n'
+        output_statement =  "print " + ", ".join([
             o.title for o in self.output
             if o.title and not o.title.startswith('_')
         ])
+        if self.filters:
+            # Wrap output expression with if statement
+            result += "if({}) {{\n    {}\n}}".format(
+                " && ".join([str(o) for o in self.filters]),
+                output_statement
+            )
+        else:
+            result += output_statement
         return result
 
 
@@ -282,6 +294,8 @@ class Expression(ast.NodeTransformer):
                 if isinstance(statement.value, ast.Name):
                     statement = ast.Assign(
                         targets=[statement.value], value=statement.value)
+                elif isinstance(statement.value, ast.Compare):
+                    pass
                 else:
                     raise ValueError("Incorrect input {}".format(statement))
 
