@@ -130,6 +130,10 @@ def awk():
     )
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument('-a', '--all-columns', action='store_true',
+                        default=False,
+                        help="Output all of the original columns first")
+    # FIXME: does MUTABLE default=[] value affect the execution?
     parser.add_argument('-o', '--output', action="append",
                         help="Output fields", default=[])
     parser.add_argument('-f', '--filter', action="append", default=[],
@@ -141,7 +145,9 @@ def awk():
     program = AWKStreamProgram(
         files.description.fields,
         filter_expressions=args.filter,
-        output_expressions=args.output
+        output_expressions=([
+            f.title for f in files.description.fields
+        ] if args.all_columns else []) + args.output
     )
 
     if args.debug:
