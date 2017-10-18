@@ -1,6 +1,6 @@
-| Build | Coverage | Documentation  | PyPI | CodeHealth |
+| Build | Coverage | Documentation  | PyPI | Code |
 |:---:|:---:|:---:|:---:|:---:|
-| [![CircleCI](https://circleci.com/gh/pavlov99/tabtools/tree/master.svg?style=svg)](https://circleci.com/gh/pavlov99/tabtools/tree/master) | ![](https://coveralls.io/repos/pavlov99/tabtools/badge.png) | [![Readthedocs](https://readthedocs.org/projects/tabtools/badge/?version=latest)](http://tabtools.readthedocs.io/en/latest/?badge=latest) | [![pypi](https://img.shields.io/pypi/v/tabtools.svg)](https://pypi.org/project/tabtools/) | [![Code Health](https://landscape.io/github/pavlov99/tabtools/master/landscape.svg?style=flat)](https://landscape.io/github/pavlov99/tabtools/master) |
+| [![CircleCI](https://circleci.com/gh/pavlov99/tabtools/tree/master.svg?style=svg)](https://circleci.com/gh/pavlov99/tabtools/tree/master) | ![](https://coveralls.io/repos/pavlov99/tabtools/badge.png) | [![Readthedocs](https://readthedocs.org/projects/tabtools/badge/?version=latest)](http://tabtools.readthedocs.io/en/latest/?badge=latest) | [![pypi](https://img.shields.io/pypi/v/tabtools.svg)](https://pypi.org/project/tabtools/) | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/dab474ce648044979ce47ead7d923250)](https://www.codacy.com/app/pavlov99/tabtools) |
 
 ### Install
 
