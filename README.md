@@ -2,8 +2,6 @@
 |:---:|:---:|:---:|:---:|:---:|
 | [![CircleCI](https://circleci.com/gh/pavlov99/tabtools/tree/master.svg?style=svg)](https://circleci.com/gh/pavlov99/tabtools/tree/master) | ![](https://coveralls.io/repos/pavlov99/tabtools/badge.png) | [![Readthedocs](https://readthedocs.org/projects/tabtools/badge/?version=latest)](http://tabtools.readthedocs.io/en/latest/?badge=latest) | [![pypi](https://img.shields.io/pypi/v/tabtools.svg)](https://pypi.org/project/tabtools/) | [![Code Health](https://landscape.io/github/pavlov99/tabtools/master/landscape.svg?style=flat)](https://landscape.io/github/pavlov99/tabtools/master) |
 
-Task board: https://waffle.io/pavlov99/tabtools
-
 ### Install
 
 ```python
@@ -16,7 +14,7 @@ pip install tabtools
 tox
 ```
 
-### documentation
+### Documentation
 1. Visit `docs` folder and install Python dependencies: Sphinx, [Napoleon](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/) plugin and [readthedocs theme](https://github.com/rtfd/sphinx_rtd_theme).
 2. Build documentation: `make html`
 3. Serve local files from `docs/_build/html` folder: `python -mSimpleHTTPServer`
