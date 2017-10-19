@@ -4,7 +4,7 @@ from ..base import (
     DataDescription,
     DataDescriptionSubheader,
     DataDescriptionSubheaderOrder,
-    DataDescriptionSubheaderSize,
+    DataDescriptionSubheaderCount,
     Field,
     OrderedField,
 )
@@ -321,21 +321,21 @@ class TestDataDescriptionSubheaderOrder(unittest.TestCase):
         self.assertEqual(self.subheader, subheader)
 
 
-class TestDataDescriptionSubheaderSize(unittest.TestCase):
+class TestDataDescriptionSubheaderCount(unittest.TestCase):
     def test_init_value(self):
-        subheader1 = DataDescriptionSubheaderSize("size", 1)
-        subheader2 = DataDescriptionSubheaderSize("size", "1")
+        subheader1 = DataDescriptionSubheaderCount("count", 1)
+        subheader2 = DataDescriptionSubheaderCount("count", "1")
         self.assertEqual(subheader1.value, 1)
         self.assertEqual(subheader2.value, 1)
         self.assertEqual(subheader1, subheader2)
 
     def test_merge(self):
         self.assertEqual(
-            DataDescriptionSubheaderSize.merge(
-                DataDescriptionSubheaderSize("size", 1),
-                DataDescriptionSubheaderSize("size", 1)
+            DataDescriptionSubheaderCount.merge(
+                DataDescriptionSubheaderCount("count", 1),
+                DataDescriptionSubheaderCount("count", 1)
             ),
-            DataDescriptionSubheaderSize("size", 2)
+            DataDescriptionSubheaderCount("count", 2)
         )
 
 
@@ -347,7 +347,7 @@ class TestDataDescription(unittest.TestCase):
             Field("c"),
         )
         self.subheaders = (
-            DataDescriptionSubheaderSize("SIZE", 1),
+            DataDescriptionSubheaderCount("COUNT", 1),
             DataDescriptionSubheaderOrder("ORDER", "c:asc\ta:desc:numeric"),
         )
         meta = "Data description and licence could be here. Even #META: tags!"
@@ -357,7 +357,7 @@ class TestDataDescription(unittest.TestCase):
             subheaders=self.subheaders,
             meta=self.meta
         )
-        self.header = "# a:float\tb:bool\tc #SIZE: 1" +\
+        self.header = "# a:float\tb:bool\tc #COUNT: 1" +\
             " #ORDER: c:asc\ta:desc:numeric #META: {}".format(meta)
 
     def test_str(self):
@@ -368,7 +368,7 @@ class TestDataDescription(unittest.TestCase):
             fields=self.fields,
             subheaders=self.subheaders,
         )
-        header = "# a:float\tb:bool\tc #SIZE: 1 #ORDER: c:asc\ta:desc:numeric"
+        header = "# a:float\tb:bool\tc #COUNT: 1 #ORDER: c:asc\ta:desc:numeric"
         self.assertEqual(str(data_description), header)
 
     def test__eq__fields(self):
@@ -436,13 +436,13 @@ class TestDataDescription(unittest.TestCase):
         with self.assertRaises(ValueError):
             DataDescription.parse("#a")
 
-        DataDescription.parse("# a\tb #SIZE: 1")
+        DataDescription.parse("# a\tb #COUNT: 1")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a\tb#SIZE: 1")
+            DataDescription.parse("# a\tb#COUNT: 1")
 
-        DataDescription.parse("# a\tb #SIZE: 1 #ORDER: a:asc")
+        DataDescription.parse("# a\tb #COUNT: 1 #ORDER: a:asc")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a\tb #SIZE: 1 ##ORDER: a:asc")
+            DataDescription.parse("# a\tb #COUNT: 1 ##ORDER: a:asc")
 
         DataDescription.parse("# a\tb #ORDER: b:asc")
         with self.assertRaises(ValueError):
@@ -455,7 +455,7 @@ class TestDataDescription(unittest.TestCase):
                 Field("b", "float"),
             ),
             subheaders=(
-                DataDescriptionSubheaderSize("SIZE", 1),
+                DataDescriptionSubheaderCount("COUNT", 1),
                 DataDescriptionSubheaderOrder("ORDER", "a:asc\tb:desc:numeric"),
             ),
             meta="meta1"
@@ -467,7 +467,7 @@ class TestDataDescription(unittest.TestCase):
                 Field("b", "bool"),
             ),
             subheaders=(
-                DataDescriptionSubheaderSize("SIZE", 1),
+                DataDescriptionSubheaderCount("COUNT", 1),
                 DataDescriptionSubheaderOrder("ORDER", "a:desc"),
             ),
             meta="meta1"
@@ -479,7 +479,7 @@ class TestDataDescription(unittest.TestCase):
                 Field("b", "float"),
             ),
             subheaders=(
-                DataDescriptionSubheaderSize("SIZE", 2),
+                DataDescriptionSubheaderCount("COUNT", 2),
             ),
         )
         self.assertEqual(DataDescription.merge(dd1, dd2), dd_expected)

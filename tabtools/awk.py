@@ -778,7 +778,7 @@ class GroupExpression(Expression):
         expression = Expression(code, begin=begin, context=self.context)
         return expression
 
-    def transform_SIZE(self, output, inputs):
+    def transform_COUNT(self, output, inputs):
         begin = "{o} = 1".format(o=output)
         code = "{o}++".format(o=output)
         expression = Expression(code, begin=begin, context=self.context)

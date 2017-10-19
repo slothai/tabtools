@@ -250,20 +250,20 @@ class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
         ]
 
 
-class DataDescriptionSubheaderSize(DataDescriptionSubheader):
+class DataDescriptionSubheaderCount(DataDescriptionSubheader):
 
     """ Subheader for file size information."""
 
     def __init__(self, key, value):
         value = int(value)
-        super(DataDescriptionSubheaderSize, self).__init__(key, value)
+        super(DataDescriptionSubheaderCount, self).__init__(key, value)
 
     @classmethod
     def merge(cls, *subheaders):
-        """ Merge SubheaderSize subheaders.
+        """ Merge SubheaderCount subheaders.
 
-        :param tuple(DataDescriptionSubheaderSize): subheaders
-        :return DataDescriptionSubheaderSize:
+        :param tuple(DataDescriptionSubheaderCount): subheaders
+        :return DataDescriptionSubheaderCount:
         :return ValueError:
 
         """
@@ -282,7 +282,7 @@ class DataDescription(object):
 
     FIELD = ^<str>field_title(:<str>field_type)?$
     SUBHEADER = ^ #<subheader_key>: <subheader_value>$
-    SUBHEADER:SIZE, value = size of document
+    SUBHEADER:COUNT, value = size of document
     SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
     ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
     META = ^( )*#META: [^n]*
