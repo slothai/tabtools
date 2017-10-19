@@ -92,6 +92,8 @@ class StreamFile(File):
         # produce incorrect result (e.g. extra line for tail).
         # This looks not great as one need to combile a line (echo-ed) with the
         # rest of the stream into one stream.
+        # https://unix.stackexchange.com/questions/64736/
+        #   combine-output-from-two-commands-in-bash
         descriptor = "<(cat <(echo \"{}\") <(cat /dev/fd/{}))".format(
             self._first_data_line, self.fd.fileno())
         return descriptor
