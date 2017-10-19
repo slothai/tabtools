@@ -128,8 +128,7 @@ def awk():
         description="Perform a map operation on all FILE(s)"
         "and write result to standard output."
     )
-    parser.add_argument(
-        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    add_common_arguments(parser)
     parser.add_argument('-a', '--all-columns', action='store_true',
                         default=False,
                         help="Output all of the original columns first")
@@ -138,6 +137,8 @@ def awk():
                         help="Output fields", default=[])
     parser.add_argument('-f', '--filter', action="append", default=[],
                         help="Filter expression")
+    parser.add_argument('-v', '--variables', action="append", default=[],
+                        help="Assigns value to program variable var")
     parser.add_argument('--debug', action='store_true', default=False,
                         help="Print result program")
     args = parser.parse_args()
@@ -157,8 +158,10 @@ def awk():
         Field(o.title, o._type) for o in program.output
         if o.title and not o.title.startswith('_')
     ])
-    sys.stdout.write(str(description) + '\n')
-    sys.stdout.flush()
+    if not args.no_header:
+        sys.stdout.write(str(description) + '\n')
+        sys.stdout.flush()
+
     files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
