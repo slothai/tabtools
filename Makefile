@@ -31,7 +31,7 @@ clean:
 .PHONY: upload
 # target: upload - Upload module on PyPi
 upload:
-	@python setup.py sdist bdist_wheel upload --dist-dir pydist || echo 'Upload already'
+	@python setup.py sdist --dist-dir pydist bdist_wheel --dist-dir pydist upload || echo 'Upload already'
 
 .PHONY: test
 # target: test - Runs tests
