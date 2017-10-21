@@ -14,6 +14,9 @@ function build_script {
     printf '# VERSION: ' >> $SCRIPT_FILENAME
     python -c 'from tabtools import __version__; print(__version__)' >> $SCRIPT_FILENAME
 
+    # Prefix every line in LICENSE with "# "
+    cat LICENSE | sed "s/^/# /" >> $SCRIPT_FILENAME
+
     echo -e "\n#####\n# __init__.py module\n#####" >> $SCRIPT_FILENAME
     cat $PACKAGE_PATH/__init__.py >> $SCRIPT_FILENAME
 

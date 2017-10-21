@@ -48,3 +48,8 @@ lint:
 env:
 	[ -d $(ENV) ] || virtualenv --no-site-packages $(ENV)
 	$(ENV)/bin/pip install -r requirements-dev.txt
+
+.PHONY: build
+# target: build - build self-executable tabtools scripts
+build:
+	bash build.sh
