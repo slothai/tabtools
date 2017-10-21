@@ -126,7 +126,9 @@ def awk():
     parser = argparse.ArgumentParser(
         add_help=True,
         description="Perform a map operation on all FILE(s)"
-        "and write result to standard output."
+        "and write result to standard output.\n"
+        "To use specific AWK interpreter set AWKPATH environment variable:"
+        "export AWKPATH=$(which mawk) && tawk ..."
     )
     add_common_arguments(parser)
     parser.add_argument('-a', '--all-columns', action='store_true',
@@ -162,14 +164,17 @@ def awk():
         sys.stdout.write(str(description) + '\n')
         sys.stdout.flush()
 
-    files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+    awk_interpreter = os.environ.get('AWKPATH', 'awk')
+    files(awk_interpreter, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
 def grp():
     parser = argparse.ArgumentParser(
         add_help=True,
         description="Perform a group operation on all FILE(s)"
-        "and write result to standard output."
+        "and write result to standard output.\n"
+        "To use specific AWK interpreter set AWKPATH environment variable:"
+        "export AWKPATH=$(which mawk) && tgrp ..."
     )
     parser.add_argument(
         'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
@@ -197,7 +202,9 @@ def grp():
 
     sys.stdout.write(str(description) + '\n')
     sys.stdout.flush()
-    files('awk', '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+
+    awk_interpreter = os.environ.get('AWKPATH', 'awk')
+    files(awk_interpreter, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
 def pretty():
