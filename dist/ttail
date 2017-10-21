@@ -1,0 +1,1885 @@
+#!/usr/bin/env python
+# VERSION: 0.5.2
+# MIT License
+# 
+# Original work Copyright (c) 2011 Alexey Akimov (@subdir) and contributors
+# This rewritten version Copyright (c) 2014-2017 Kirill Pavlov
+# 
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in all
+# copies or substantial portions of the Software.
+# 
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+# SOFTWARE.
+
+#####
+# __init__.py module
+#####
+""" Tab separated files utility."""
+__version = (0, 5, 2)
+
+__version__ = version = '.'.join(map(str, __version))
+__project__ = PROJECT = __name__
+
+#####
+# six.py module
+#####
+try:
+    from itertools import izip_longest as zip_longest
+except ImportError:
+    from itertools import zip_longest  # noqa
+
+
+def add_metaclass(metaclass):
+    """Class decorator for creating a class with a metaclass."""
+    def wrapper(cls):
+        orig_vars = cls.__dict__.copy()
+        orig_vars.pop('__dict__', None)
+        orig_vars.pop('__weakref__', None)
+        slots = orig_vars.get('__slots__')
+        if slots is not None:
+            if isinstance(slots, str):
+                slots = [slots]
+            for slots_var in slots:
+                orig_vars.pop(slots_var)
+        return metaclass(cls.__name__, cls.__bases__, orig_vars)
+    return wrapper
+
+#####
+# utils.py module
+#####
+class Choices(object):
+
+    """ Choices."""
+
+    def __init__(self, *choices):
+        self._choices = []
+        self._choice_dict = {}
+
+        for choice in choices:
+            if isinstance(choice, (list, tuple)):
+                if len(choice) == 2:
+                    choice = (choice[0], choice[1], choice[1])
+
+                elif len(choice) != 3:
+                    raise ValueError(
+                        "Choices can't handle a list/tuple of length {0}, only\
+                        2 or 3".format(choice))
+            else:
+                choice = (choice, choice, choice)
+
+            self._choices.append((choice[0], choice[2]))
+            self._choice_dict[choice[1]] = choice[0]
+
+    def __getattr__(self, attname):
+        try:
+            return self._choice_dict[attname]
+        except KeyError:
+            raise AttributeError(attname)
+
+    def __iter__(self):
+        return iter(self._choices)
+
+    def __getitem__(self, index):
+        return self._choices[index]
+
+    def __delitem__(self, index):
+        del self._choices[index]
+
+    def __setitem__(self, index, value):
+        self._choices[index] = value
+
+    def __repr__(self):
+        return "{0}({1})".format(
+            self.__class__.__name__,
+            self._choices
+        )
+
+    def __len__(self):
+        return len(self._choices)
+
+    def __contains__(self, element):
+        return element in self._choice_dict.values()
+
+
+class ProxyMeta(type):
+
+    """ Proxy objects metaclass. """
+
+    __store__ = dict()
+
+    def __new__(class_, name, bases, params):
+        cls = super(ProxyMeta, class_).__new__(class_, name, bases, params)
+
+        if not cls.__proxy__:
+            cls.__proxy__ = cls
+            class_.__store__[cls] = dict()
+            return cls
+
+        proxy = cls.__proxy__.__name__
+        key = ''.join(s for s in name.split(proxy, 1) if s).lower()
+        cls.proxy = property(lambda x: x)
+        class_.__store__[cls.__proxy__][key] = cls
+        return cls
+
+
+class Proxy(object):
+
+    """ Proxy class functionality. """
+
+    __proxy__ = None
+
+    @property
+    def proxy(self):
+        """ Return instance with related proxy class. """
+        proxy_base = self.__class__.__proxy__
+        cls = self.__class__.__store__[proxy_base].get(self.key, proxy_base)
+        new = cls.__new__(cls)
+        new.__dict__ = self.__dict__
+        return new
+
+
+class _classproperty(property):
+
+    """ Implement property behaviour for classes.
+    class A():
+        @_classproperty
+        @classmethod
+        def name(cls):
+            return cls.__name__
+    """
+
+    def __get__(self, obj, type_):
+        return self.fget.__get__(None, type_)()
+
+
+def _cached(f):
+    ''' Decorator that makes a method cached.'''
+
+    attr_name = '_cached_' + f.__name__
+
+    def wrapper(obj, *args, **kwargs):
+        if not hasattr(obj, attr_name):
+            setattr(obj, attr_name, f(obj, *args, **kwargs))
+        return getattr(obj, attr_name)
+    return wrapper
+
+
+classproperty = lambda f: _classproperty(classmethod(f))
+cached_property = lambda f: property(_cached(f))
+cached_classproperty = lambda f: classproperty(_cached(f))
+
+#####
+# base.py module
+#####
+""" Base package classes."""
+import itertools
+
+
+class Field(object):
+
+    """ Field description."""
+
+    TYPES = Choices(
+        ("bool", "BOOL"),
+        ("int", "INT"),
+        ("float", "FLOAT"),
+        ("str", "STR"),
+        ("null", "NULL"),
+    )
+
+    def __init__(self, title, _type=None):
+        if not title:
+            raise ValueError("Title should exist")
+
+        if " " in title:
+            raise ValueError("field could not have spaces: {}".format(title))
+
+        if _type is not None and _type not in self.TYPES:
+            raise ValueError("Unknown type {}".format(_type))
+
+        self.title = title
+        self.type = _type or self.TYPES.NULL
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.title == other.title and self.type == other.type
+
+    def __str__(self):
+        if self.type == self.TYPES.NULL:
+            return self.title
+        else:
+            return "{}:{}".format(self.title, self.type)
+
+    def __repr__(self):
+        return "<{} ({})>".format(self.__class__.__name__, str(self))
+
+    @classmethod
+    def parse(cls, field):
+        """ Parse Field from given string.
+
+        :return Field:
+
+        """
+        if field.endswith(":"):
+            raise ValueError("field does not have a type: {}".format(field))
+
+        return Field(*field.split(":"))
+
+    @classmethod
+    def combine_types(cls, *types):
+        """Deduce result type from a list of types.
+
+        :param tuple(str): field types.
+        :return: str
+
+        """
+        ordered_types = [t[0] for t in cls.TYPES]
+        result = ordered_types[max(ordered_types.index(t) for t in types)]
+        return result
+
+    @classmethod
+    def merge(cls, *fields):
+        """Merge fields and handle the result type.
+
+        This operation works as SQL union: if field names are different, pick
+        the first one. If types are different, deduce a result type.
+
+        :param tuple(Field): fields
+        :return Field:
+        :return ValueError:
+
+        """
+        if not fields:
+            raise ValueError("At least one field is required")
+
+        result_type = cls.combine_types(*[f.type for f in fields])
+        return Field(fields[0].title, result_type)
+
+
+class OrderedField(object):
+
+    """ Ordered field."""
+
+    SORT_TYPES = Choices(
+        ("", "STRING", ""),
+        ("M", "MONTH", "month"),
+        ("R", "RANDOM", "random"),
+        ("V", "VERSION", "version"),
+        ("g", "GENERAL_NUMERIC", "general-numeric"),
+        ("h", "HUMAN_NUMERIC", "human-numeric"),
+        ("n", "NUMERIC", "numeric"),
+    )
+    SORT_ORDERS = Choices(
+        ("", "ASCENDING", "asc"),
+        ("r", "DESCENDING", "desc"),
+    )
+    SORT_TYPES_REVERSED = dict(zip(*reversed(list(zip(*SORT_TYPES)))))
+    SORT_ORDERS_REVERSED = dict(zip(*reversed(list(zip(*SORT_ORDERS)))))
+
+    def __init__(self, title, sort_order=None, sort_type=None):
+        if " " in title:
+            raise ValueError("Field title has space: {}".format(title))
+
+        if sort_type is not None and sort_type not in self.SORT_TYPES:
+            raise ValueError("Unknown sort type {}".format(sort_type))
+
+        if sort_order is not None and sort_order not in self.SORT_ORDERS:
+            raise ValueError("Unknown sort order {}".format(sort_order))
+
+        self.title = title
+        self.sort_type = sort_type or self.SORT_TYPES.STRING
+        self.sort_order = sort_order or self.SORT_ORDERS.ASCENDING
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.title == other.title and \
+            self.sort_type == other.sort_type and \
+            self.sort_order == other.sort_order
+
+    @property
+    def sort_flag(self):
+        """ Sort flag for unit sort function.
+
+        :return str:
+
+        """
+        flag = ""
+        if self.sort_type is not None:
+            flag += self.sort_type
+
+        if self.sort_order:
+            flag += self.sort_order
+
+        return flag
+
+    def __str__(self):
+        terms = [self.title, dict(self.SORT_ORDERS)[self.sort_order]]
+        if self.sort_type:
+            terms.append(dict(self.SORT_TYPES)[self.sort_type])
+        return ":".join(terms)
+
+    def __repr__(self):
+        return "<{} ({})>".format(self.__class__.__name__, str(self))
+
+    @classmethod
+    def parse(cls, ordered_field):
+        """ Parse OrderedField from given string.
+
+        :return OrderedField:
+
+        """
+        if ordered_field.endswith(":"):
+            raise ValueError(
+                "OrderedField does not have type: {}".format(ordered_field))
+
+        args = ordered_field.split(":")
+        if len(args) > 1:
+            if not args[1] in cls.SORT_ORDERS_REVERSED:
+                raise ValueError("Sort order {} shoild be in {}".format(
+                    args[1], cls.SORT_ORDERS_REVERSED.keys()
+                ))
+
+            args[1] = cls.SORT_ORDERS_REVERSED[args[1]]
+
+        if len(args) > 2:
+            if not args[2] in cls.SORT_TYPES_REVERSED:
+                raise ValueError("Sort type {} shoild be in {}".format(
+                    args[2], cls.SORT_TYPES_REVERSED.keys()
+                ))
+
+            args[2] = cls.SORT_TYPES_REVERSED[args[2]]
+
+        return OrderedField(*args)
+
+
+@add_metaclass(ProxyMeta)
+class DataDescriptionSubheader(Proxy):
+
+    """ Subheader of file."""
+
+    def __init__(self, key, value):
+        if not key.isalnum():
+            raise ValueError("Key {} is not alphanumeric".format(key))
+        self.key = key.lower()
+        self.value = value
+
+    def __hash__(self):
+        return hash((self.key, self.value))
+
+    def __str__(self):
+        return "{}: {}".format(self.key.upper(), self.value)
+
+    def __repr__(self):
+        return "<{} ({})>".format(self.__class__.__name__, str(self))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.key == other.key and self.value == other.value
+
+    @classmethod
+    def parse(cls, subheader):
+        """ Parse subheader from given string.
+
+        :return DataDescriptionSubheader:
+
+        """
+        key, value = subheader.split(": ", 1)
+        return cls(key, value)
+
+    @classmethod
+    def merge(cls, *subheaders):
+        """ Merge subheaders with the same name.
+
+        As far as subheader could consist of any information, it needs to be
+        handled manually. By default method return subheader with empty value.
+
+        :param tuple(Subheader): subheader
+        :return Subheader:
+        :return ValueError:
+
+        """
+        if not subheaders:
+            raise ValueError("At least one subheader is required")
+
+        subheader_keys = {s.key for s in subheaders}
+        if len(subheader_keys) != 1:
+            raise ValueError("Subheaders keys are not equal {} ".format(
+                subheader_keys))
+
+        return DataDescriptionSubheader(subheaders[0].key, "")
+
+
+class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
+
+    """ Subheader for fields order information."""
+
+    def __init__(self, key, value):
+        super(DataDescriptionSubheaderOrder, self).__init__(key, value)
+        self.ordered_fields = [
+            OrderedField.parse(f)
+            for f in value.split(DataDescription.DELIMITER)
+        ]
+
+
+class DataDescriptionSubheaderCount(DataDescriptionSubheader):
+
+    """ Subheader for file size information."""
+
+    def __init__(self, key, value):
+        value = int(value)
+        super(DataDescriptionSubheaderCount, self).__init__(key, value)
+
+    @classmethod
+    def merge(cls, *subheaders):
+        """ Merge SubheaderCount subheaders.
+
+        :param tuple(DataDescriptionSubheaderCount): subheaders
+        :return DataDescriptionSubheaderCount:
+        :return ValueError:
+
+        """
+        subheader = DataDescriptionSubheader.merge(*subheaders).proxy
+        subheader.value = sum(x.value for x in subheaders)
+        return subheader
+
+
+class DataDescription(object):
+
+    """ Data description, taken from header.
+
+    Data header has following format:
+
+    ^# (<FIELD>(\t<FIELD>)*)?(<SUBHEADER>)*(<META>)?
+
+    FIELD = ^<str>field_title(:<str>field_type)?$
+    SUBHEADER = ^ #<subheader_key>: <subheader_value>$
+    SUBHEADER:COUNT, value = size of document
+    SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
+    ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
+    META = ^( )*#META: [^n]*
+
+    """
+
+    DELIMITER = "\t"
+    PREFIX = "# "
+    SUBHEADER_PREFIX = " #"
+
+    def __init__(self, fields=None, subheaders=None, meta=None):
+        self.fields = tuple(fields or ())
+        self.subheaders = tuple(subheaders or ())
+        self.meta = meta
+
+    def __str__(self):
+        subheaders = list(self.subheaders)
+        if self.meta is not None:
+            subheaders.append(self.meta)
+
+        return self.PREFIX + "".join(
+            [self.DELIMITER.join(map(str, self.fields))] +
+            list(map(lambda s: self.SUBHEADER_PREFIX + str(s), subheaders))
+        )
+
+    def __repr__(self):
+        return "<{}:\nFields: {}\nSubheaders: {}\nMeta: {}\n>".format(
+            self.__class__.__name__,
+            repr(self.fields),
+            repr(self.subheaders),
+            repr(self.meta)
+        )
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and \
+            self.fields == other.fields and \
+            set(self.subheaders) == set(other.subheaders) and \
+            self.meta == other.meta
+
+    @classmethod
+    def generate_header(cls, line):
+        return "# " + cls.DELIMITER.join(
+            "f{}".format(i) for i, f in enumerate(line.split(cls.DELIMITER))
+        )
+
+    @classmethod
+    def parse(cls, header, delimiter=None):
+        """ Parse string into DataDescription object.
+
+        :return DataDescription:
+
+        """
+        if not header.startswith(cls.PREFIX):
+            raise ValueError(
+                "Header '{}' should start with {}".format(header, cls.PREFIX))
+
+        fields_subheaders_and_meta = header[len(cls.PREFIX):].split(
+            "#META: ", 1)
+        fields_subheaders = fields_subheaders_and_meta[0]
+        meta = None if len(fields_subheaders_and_meta) == 1 else \
+            DataDescriptionSubheader("META", fields_subheaders_and_meta[1])
+
+        fields_and_subheaders = fields_subheaders.rstrip().split(
+            cls.SUBHEADER_PREFIX)
+
+        fields = tuple(
+            Field.parse(f) for f in
+            fields_and_subheaders[0].split(cls.DELIMITER) if f
+        )
+
+        subheaders = [
+            DataDescriptionSubheader.parse(s).proxy
+            for s in fields_and_subheaders[1:]
+        ]
+        for s in subheaders:
+            s.__init__(s.key, s.value)
+
+        fields_set = {f.title for f in fields}
+        ordered_fields_set = {
+            f.title for s in subheaders
+            if isinstance(s, DataDescriptionSubheaderOrder)
+            for f in s.ordered_fields
+        }
+        if not ordered_fields_set <= fields_set:
+            raise ValueError(
+                "Ordered fields {} should be subset of fields {}".format(
+                    ordered_fields_set, fields_set))
+
+        return DataDescription(fields=fields, subheaders=subheaders, meta=meta)
+
+    @classmethod
+    def merge(cls, *dds):
+        """ Merge Data Descriptions.
+
+        Fields should be in the same order, number of fields should be equal
+
+        :param tuple(DataDescription): dds
+        :return DataDescription:
+        :return ValueError:
+
+        """
+        # self.subheaders = tuple(subheaders or ())
+        fields = tuple(
+            Field.merge(*fields) for fields in
+            zip_longest(*(dd.fields for dd in dds))
+        )
+        key = lambda x: x.key
+        subheaders = [
+            DataDescriptionSubheader(k, "").proxy.merge(*list(v))
+            for k, v in itertools.groupby(
+                sorted((x for dd in dds for x in dd.subheaders), key=key), key
+            )
+        ]
+        subheaders = tuple(x for x in subheaders if x.value)
+        return DataDescription(fields=fields, subheaders=subheaders)
+
+#####
+# files.py module
+#####
+""" Files and streams utility."""
+import os
+import sys
+import subprocess
+
+
+class File(object):
+
+    """ File base class."""
+
+    def __init__(self, fd):
+        """ Init fie object.
+
+        :param fd: file descriptor
+        file = File(fd).proxy
+
+        """
+        self.fd = fd
+
+    def readline(self):
+        raise NotImplementedError("Implement this method in derided class")
+
+    @property
+    def has_header(self):
+        if self._first_line is None:
+            return False
+
+        try:
+            DataDescription.parse(self._first_line)
+            return True
+        except ValueError:
+            return False
+
+    @property
+    def header(self):
+        if not self.has_header:
+            raise ValueError("File {} does not have header.".format(self.fd))
+        return self._first_line
+
+    @property
+    def autoheader(self):
+        return DataDescription.generate_header(self._first_data_line)
+
+    @property
+    def proxy(self):
+        """ Return file with actual type."""
+        try:
+            self.fd.tell()
+        except IOError:
+            return StreamFile(self.fd)
+        except ValueError:
+            # Operation on closed descriptor
+            return None
+        else:
+            return RegularFile(self.fd)
+
+
+class StreamFile(File):
+
+    """ General input stream.
+
+    .. note: StreamFile could be read only once, seek is not allowed.
+
+    """
+    def __init__(self, fd):
+        super(StreamFile, self).__init__(fd)
+        self._first_line = self.readline()
+        self._first_data_line = self.readline() if self.has_header \
+            else self._first_line
+
+    def readline(self):
+        """Read one line and return it."""
+        chars = []
+        while True:
+            char = os.read(self.fd.fileno(), 1).decode('utf8')
+            if char is None or char == '' or char == '\n':
+                break
+            chars.append(char)
+
+        if chars:
+            return ''.join(chars)
+        else:
+            return None
+
+    @property
+    def body_descriptor(self):
+        """ Return file descriptor in system."""
+        # NOTE: it is important to combine two file descriptors into one.
+        # Otherwise commands like tail would treat both stream independently and
+        # produce incorrect result (e.g. extra line for tail).
+        # This looks not great as one need to combile a line (echo-ed) with the
+        # rest of the stream into one stream.
+        # https://unix.stackexchange.com/questions/64736/
+        #   combine-output-from-two-commands-in-bash
+        descriptor = "<(cat <(echo \"{}\") <(cat /dev/fd/{}))".format(
+            self._first_data_line, self.fd.fileno())
+        return descriptor
+
+
+class RegularFile(File):
+
+    """ Regular file according to file types.
+
+    http://en.wikipedia.org/wiki/Unix_file_types
+
+    """
+    def __init__(self, fd):
+        super(RegularFile, self).__init__(fd)
+        self._first_line = self.readline()
+        self._first_data_line = self.readline() if self.has_header \
+            else self._first_line
+
+    def readline(self):
+        """ Return regular file header."""
+        with open(self.fd.name) as f:
+            line = f.readline()
+        return line
+
+    @property
+    def body_descriptor(self):
+        """ Return regular file descriptor.
+
+        Regular file has header, descriptor consists of lines starting
+        from second.
+
+        """
+        os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
+        if self.has_header:
+            return "<( tail -qn+2 {} )".format(self.fd)
+        else:
+            return self.fd
+
+
+class FileList(list):
+
+    """ List of Files."""
+
+    def __init__(self, files=None, header=None, should_generate_header=None):
+        files = files or [sys.stdin]
+        super(FileList, self).__init__([File(f).proxy for f in files])
+        self._header = header
+        self.should_generate_header = should_generate_header or False
+
+    @property
+    def body_descriptors(self):
+        """ Return list of file descriptors."""
+        return [f.body_descriptor for f in self]
+
+    @cached_property
+    def description(self):
+        """ Get data description.
+
+        .. note: cache property to allow multiple header access in case of
+        stream files.
+
+        Return
+        ------
+        DataDescription
+
+        """
+        if self._header:
+            return DataDescription.parse(self._header)
+        else:
+            headers = [
+                f.autoheader if self.should_generate_header else f.header
+                for f in self
+            ]
+            return DataDescription.merge(*[
+                DataDescription.parse(header) for header in headers
+            ])
+
+    @property
+    def header(self):
+        """ Get header for files list.
+
+        :return str: header
+        :raise ValueError:
+
+        """
+        return str(self.description)
+
+    def __call__(self, *args, **kwargs):
+        command = [
+            'bash', '-o', 'pipefail', '-o', 'errexit', '-c',
+        ]
+        args = list(args)
+        subcommand = " ".join(
+            ['LC_ALL=C', args.pop(0)] + args + self.body_descriptors
+        )
+        command.append(subcommand)
+        subprocess.call(command)
+
+#####
+# awk.py module
+#####
+""" Tools to generate awk code to be executed.
+
+awk - the most common and will be found on most Unix-like systems, oldest
+version and inferior to newer ones.
+
+mawk - fast AWK implementation which it's code base is based on
+a byte-code interpreter.
+
+nawk - while the AWK language was being developed the authors released
+a new version (hence the n - new awk) to avoid confusion. Think of it like
+the Python 3.0 of AWK.
+
+gawk - abbreviated from GNU awk. The only version in which the developers
+attempted to add i18n support. Allowed users to write their own C shared
+libraries to extend it with their own "plug-ins". This version is the standard
+implementation for Linux, original AWK was written for Unix v7.
+
+"""
+import ast
+import copy
+import time
+
+
+
+class AWKBaseProgram(object):
+
+    """ AWK program generator."""
+
+    MODULES = Choices(
+        ("dequeue", "DEQUE"),
+    )
+
+    def __str__(self):
+        result = "'\n"
+        result += self.modules_code
+
+        if self.begin_code:
+            result += "\nBEGIN{{\n{}\n}}\n".format(self.begin_code)
+
+        result += "{\n"
+        result += self.output_code
+        result += "\n}'"
+        return result
+
+    @property
+    def begin_code(self):
+        return "\n".join([
+            expression.begin for expression in self.output
+            if expression.begin])
+
+    @property
+    def modules_code(self):
+        """ Get code for modules used.
+
+        Expression might use modules or functions, such as queue or dequeue.
+        Iterate over all of the expressions and collect modules from them.
+
+        """
+        modules = set([])
+        for expression in self.output:
+            modules |= expression.modules
+
+        # if self.group_key:
+            # for expression in self.key + self.group:
+                # modules |= expression.modules
+
+        return "\n".join([
+            getattr(self, "module_{}".format(module))
+            for module in modules])
+
+    @property
+    def module_dequeue(self):
+        """ Deque realizsation in awk."""
+        return "\n".join([
+            '# awk module degue',
+            'function deque_init(d) {d["+"] = d["-"] = 0}',
+            'function deque_is_empty(d) {return d["+"] == d["-"]}',
+            'function deque_push_back(d, val) {d[d["+"]++] = val}',
+            'function deque_push_front(d, val) {d[--d["-"]] = val}',
+            'function deque_back(d) {return d[d["+"] - 1]}',
+            'function deque_front(d) {return d[d["-"]]}',
+            'function deque_pop_back(d) {if(deque_is_empty(d)) {return NULL} else {i = --d["+"]; x = d[i]; delete d[i]; return x}}',  # nolint
+            'function deque_pop_front(d) {if(deque_is_empty(d)) {return NULL} else {i = d["-"]++; x = d[i]; delete d[i]; return x}}',  # nolint
+            'function deque_print(d){x="["; for (i=d["-"]; i<d["+"] - 1; i++) x = x d[i]", "; print x d[d["+"] - 1]"]; size: "d["+"] - d["-"] " [" d["-"] ", " d["+"] ")"}',  # nolint
+        ])
+
+
+class AWKStreamProgram(AWKBaseProgram):
+
+    """ AWK stream processor.
+
+    Params
+    ------
+    fields: tabtools.base.DataDescription.fields
+    output_expressions: list, optional
+    filter_expressions: list, optional
+
+    context: dict
+        title -> (index, [type]), if there is no type, str is used.
+
+    Program structure
+    -----------------
+        <modules>
+        BEGIN{
+            <init>
+        }
+        {
+            <main part>
+        }
+
+    """
+
+    def __init__(self, fields, filter_expressions=None, output_expressions=None):
+        self.fields = fields
+        self.filter_expressions = filter_expressions or []
+        self.output_expressions = output_expressions or []
+        self.context = {
+            field.title: Expression('${}'.format(index + 1), title=field.title)
+            for index, field in enumerate(self.fields)
+        }
+
+        self.filters = StreamExpression.from_str(
+            "; ".join(self.filter_expressions),
+            self.context
+        )
+        self.output = StreamExpression.from_str(
+            "; ".join(self.output_expressions),
+            self.context
+        )
+
+    @property
+    def output_code(self):
+        result = ";\n".join([str(o) for o in self.output]) + ';\n'
+        output_statement =  "print " + ", ".join([
+            o.title for o in self.output
+            if o.title and not o.title.startswith('_')
+        ])
+        if self.filters:
+            # Wrap output expression with if statement
+            result += "if({}) {{\n    {}\n}}".format(
+                " && ".join([str(o) for o in self.filters]),
+                output_statement
+            )
+        else:
+            result += output_statement
+        return result
+
+
+class AWKGroupProgram(AWKBaseProgram):
+
+    """ Awk Program generator.
+
+    Program structure
+    -----------------
+    <modules>
+    BEGIN{
+        <init>
+    }{
+        <main part>
+    }END{
+        <final part>
+    }
+
+    _NR local line number.
+    If program has group functionality, it star
+    If program does not have group functionality, it equals to NR
+
+    """
+
+    def __init__(self, fields, group_key, group_expressions):
+        self.fields = fields
+        self.context = {
+            field.title: Expression('${}'.format(index + 1), title=field.title)
+            for index, field in enumerate(self.fields)
+        }
+
+        self.key = Expression.from_str(group_key, self.context)
+        # self.key[-1].title = "__group_key"
+        self.key.append(Expression(self.key[-1].title, title="__group_key"))
+        # self.context["__group_key"] = self.key[-1]
+
+        self.group_expressions = group_expressions or []
+        self.output = GroupExpression.from_str(
+            "; ".join(self.group_expressions), self.context)
+
+    def __str__(self):
+        result = self.output_code
+        return result
+
+    @property
+    def output_code(self):
+        """ Get code of grouping part."""
+        result = "'{\n"
+        result += "\n".join(str(k) for k in self.key)
+        result += "\n"
+        group_code = "\n".join([
+            "if(NR == 1){{",
+            "    {group_init}",
+            "}} else {{",
+            "  if(__group_key != __group_key_previous){{",
+            "    {group_finalize}",
+            "    print __group_key_previous, {group_output}",
+            "    {group_init}",
+            "  }} else {{",
+            "    {group_update}",
+            "  }}",
+            "}}",
+            "__group_key_previous = __group_key;",
+            "}}\nEND{{",
+            "    {group_finalize}",
+            "    print __group_key_previous, {group_output}",
+        ])
+        group_code = group_code.format(
+            group_init="\n    ".join([
+                str(o) if not o.begin else str(o.begin) for o in self.output
+                if not (o.title and not o.title.startswith('_'))
+            ]),
+            group_update="\n    ".join([
+                str(o) for o in self.output
+                if not (o.title and not o.title.startswith('_'))
+            ]),
+            group_finalize="\n    ".join([
+                str(o) for o in self.output
+                if o.title and not o.title.startswith('_')
+            ]),
+            group_output=", ".join([
+                o.title for o in self.output
+                if o.title and not o.title.startswith('_')
+            ])
+        )
+        result += group_code
+        result += "\n}'"
+        return result
+
+
+class Expression(ast.NodeTransformer):
+
+    """ Expression class.
+
+    Class is used to control expression types
+
+    Supported functions:
+        EPOCH(x): convert date from iso to timestamp
+
+    """
+
+    def __init__(self, value, title=None, _type=None,
+                 context=None, begin=None, modules=None):
+        """ Expression init.
+
+        value: formula to use
+        title: optional variable to assign
+        begin: initial value
+
+        """
+        self.title = title
+        self._type = _type
+        self.value = value
+        self.begin = begin
+        self.context = context or {}
+        self.modules = set(modules or {})
+
+    def __str__(self):
+        if self.title is not None:
+            return "{} = {}".format(self.title, self.value)
+        else:
+            return str(self.value)
+
+    def __repr__(self):
+        return "<{}: {}>".format(self.__class__.__name__, self.value)
+
+    @classmethod
+    def from_str(cls, value, context=None):
+        expressions = cls(None, context=context).visit(ast.parse(value))
+        return expressions
+
+    def generic_visit(self, node):
+        raise ValueError("Class is not supported {}".format(node))
+
+    def visit_Module(self, node):
+        """ Expected input
+
+        Assignment
+        Expression which is variable
+
+        """
+        output = []
+        for statement in node.body:
+            if not isinstance(statement, (ast.Expr, ast.Assign)):
+                raise ValueError("Incorrect input {}".format(statement))
+
+            if isinstance(statement, ast.Expr):
+                if isinstance(statement.value, ast.Name):
+                    statement = ast.Assign(
+                        targets=[statement.value], value=statement.value)
+                elif isinstance(statement.value, ast.Compare):
+                    pass
+                else:
+                    raise ValueError("Incorrect input {}".format(statement))
+
+            output.extend(self.visit(statement))
+        return output
+
+    def visit_Assign(self, node):
+        """ Return list of expressions.
+
+        in case of code x = F(expr), generate two expressions
+        __var = expr
+        x = F(__var)
+
+        """
+        target_name = node.targets[0].id
+        values = self.visit(node.value)
+        if target_name not in self.context:
+            # add variable to context, it is already defined, {'var': 'var'}
+            self.context[target_name] = Expression(target_name)
+        values[-1].title = target_name
+        return values
+
+    def visit_Name(self, node):
+        if node.id in self.context:
+            return [self.context[node.id]]
+        else:
+            raise ValueError("Variable {} not in context".format(node.id))
+
+    def visit_BinOp(self, node):
+        options = {
+            ast.Add: '+',
+            ast.Sub: '-',
+            ast.Mult: '*',
+            ast.Pow: '**',
+            ast.Div: '/'
+        }
+        op = type(node.op)
+        if op in options:
+            output = []
+            lefts = self.visit(node.left)
+            rights = self.visit(node.right)
+
+            for left in lefts[:-1]:
+                output.append(left)
+                self.context.update(left.context)
+
+            for right in rights[:-1]:
+                output.append(right)
+                self.context.update(right.context)
+
+            expr = Expression(
+                "({}) {} ({})".format(
+                    lefts[-1].value,
+                    options[op],
+                    rights[-1].value
+                ),
+                context=self.context
+            )
+            output.append(expr)
+            return output
+        else:
+            raise ValueError("Not Supported binary operation {}".format(
+                op.__name__))
+
+    def visit_BoolOp(self, node):
+        options = {
+            ast.And: '&&',
+            ast.Or: '||',
+        }
+        op = type(node.op)
+        vals = []
+        if op in options:
+            output = []
+
+            for value in node.values:
+                values = self.visit(value)
+
+                for v in values[:-1]:
+                    output.append(v)
+                    self.context.update(v.context)
+
+                vals.append(values[-1].value)
+
+            expr = Expression(
+                " {} ".format(options[op]).join([
+                    "({})".format(v) for v in vals
+                ]),
+                context=self.context
+            )
+            output.append(expr)
+            return output
+        else:
+            raise ValueError("Not Supported bool operation {}".format(
+                op.__name__))
+
+
+    def visit_UnaryOp(self, node):
+        options = {
+            ast.USub: '-',
+        }
+        op = type(node.op)
+        if op in options:
+            output = self.visit(node.operand)
+            self.context.update(output[-1].context)
+
+            expr = Expression(
+                "{}{}".format(options[op], output[-1].value),
+                context=self.context)
+            output.append(expr)
+            return output
+        else:
+            raise ValueError("Not Supported unary operation {}".format(
+                op.__name__))
+
+    def visit_Num(self, node):
+        return [Expression(node.n)]
+
+    def visit_Call(self, node):
+        """ Substitute function.
+        F(expression) -> __val_1 = expression, __val_2 = F(__val_1)
+        """
+        output = []
+        for arg in node.args:
+            var = "__var_{}".format(len(self.context))
+            visited_args = self.visit(arg)
+
+            # NOTE: deepcopy possible existing in context expression, do not
+            # overwrite original title to not affect previous expression.
+            # NOTE: if it is ok to use previous expressions in current
+            # function, then lines until output.extend(..) could be removed.
+            # But in this case duplicates in generated code could be found.
+            val = copy.deepcopy(visited_args[-1])
+            val.title = var
+            self.context[var] = val
+            visited_args[-1] = val
+            output.extend(visited_args)
+
+        # Built-in awk functions
+        var = "__var_{}".format(len(self.context))
+
+        try:
+            transform_function = getattr(
+                self, "transform_{}".format(node.func.id))
+        except AttributeError:
+            # NOTE: remove following duplicated arguments. They appear if
+            # function has function as an argument:
+            # f(x, g(y)) -> __var1 = x, __var2=y ....
+            # f(__var1, __var2, __var2)  # strftime(%U, DateEpoch(x))
+            args = []
+            processed_args = set()
+
+            for o in output:
+                if o.title and o.title not in processed_args:
+                    args.append(o.title)
+                    processed_args.add(o.title)
+
+            expression = Expression(
+                "{func}({args})".format(
+                    func=node.func.id,
+                    args=", ".join(args)
+                ), title=var, context=self.context
+            )
+        else:
+            expression = transform_function(var, output)
+
+        self.context[var] = expression
+        output.append(expression)
+        output.append(Expression(var, title=var))
+        return output
+
+    def visit_Expr(self, node):
+        return self.visit(node.value)
+
+    def visit_Str(self, node):
+        return [Expression("\"{}\"".format(node.s), title=node.s)]
+
+    def visit_IfExp(self, node):
+        output = []
+        tests = self.visit(node.test)
+        bodys = self.visit(node.body)
+        orelses = self.visit(node.orelse)
+
+        output.extend(tests[:-1])
+        output.extend(bodys[:-1])
+        output.extend(orelses[:-1])
+        expr = Expression(
+            "({}) ? ({}) : ({})".format(
+                tests[-1].value,
+                bodys[-1].value,
+                orelses[-1].value
+            ),
+            context=self.context
+        )
+        output.append(expr)
+        return output
+
+    def visit_Compare(self, node):
+        options = {
+            ast.Eq: '==',
+            ast.NotEq: '!=',
+            ast.Lt: '<',
+            ast.LtE: '<=',
+            ast.Gt: '>',
+            ast.GtE: '>=',
+        }
+        lefts = self.visit(node.left)
+        output = lefts[:-1]
+        code = "({})".format(lefts[-1].value)
+        for comparator, op in zip(node.comparators, node.ops):
+            comparators = self.visit(comparator)
+            output.extend(comparators[:-1])
+            op = type(op)
+            if op not in options:
+                raise ValueError('Unknown comparator {}'.format(op))
+
+            code += " {} ({})".format(options[op], comparators[-1].value)
+
+        expr = Expression(code, context=self.context)
+        output.append(expr)
+        return output
+
+    def _get_suffix(self):
+        """ Get unique suffix for variables insude the function."""
+        return "_{}".format(int(time.time() * 10 ** 6))
+
+    def transform_DateEpoch(self, output, inputs):
+        value = inputs[0].title
+        code = "; ".join([
+            'split({v}, __date{o}, "-")',
+            '{o} = mktime(__date{o}[1]" "__date{o}[2]" "' +
+            '__date{o}[3]" 00 00 00 UTC")',
+        ]).format(o=output, v=value)
+        expression = Expression(code, context=self.context)
+        return expression
+
+
+class StreamExpression(Expression):
+
+    """ Exression management for stream operations.
+
+    Supported functions:
+        SUM(x): sum of elements in column x
+        SUM(x, k): sum of last k elements in column x
+        SUM2(x): sum of squares of elements in column x
+        AVG(x): average value of elements in column x
+        AVG(x, k): moving average of last k elements in column x
+        EMA(x, k): exponential moving average with a = 2 / (k + 1)
+        MAX(x): maximum value in column x
+        MAX(x, k): moving maximum of last k elements in x
+        MIN(x): minimum value in column x
+        MIN(x, k): moving minimum of last k elements in x
+
+    """
+
+    def transform_SUM(self, output, inputs):
+        """ Get sum or moving sum.
+
+        Moving sum is calculated for lask k (inputs[1]) elements.
+        Implementation is specific for awk: undefined variables equal to 0.
+        Code is minified version of following:
+
+        BEGIN {output = 0; array = [0, ..., 0]}
+        mod = NR % k
+        output = output + value
+        if(NR > k){
+            output = output - array[mod];  # remove old elements
+        }
+        array[mod] = value
+
+        Modified version:
+        mod = NR % k
+        output += (value - array[mod])
+        array[mod] = value
+
+        """
+        if len(inputs) > 2:
+            raise ValueError("SUM function: too many arguments (>2)")
+
+        value = inputs[0].title
+        if len(inputs) == 1:
+            code = "{o} += {v}".format(o=output, v=value)
+        else:
+            window_size = int(inputs[1].value)
+            code = "; ".join([
+                "__sum_mod{o} = NR % {size}",
+                "{o} += ({v} - __sum_array{o}[__sum_mod{o}])",
+                "__sum_array{o}[__sum_mod{o}] = {v}",
+            ]).format(o=output, v=value, size=window_size)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_SUM2(self, output, inputs):
+        """ Sum of squares."""
+        code = "{o} += {v} ** 2".format(o=output, v=inputs[0].title)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_AVG(self, output, inputs):
+        """ Get average or moving average.
+
+        Moving average is calculated for lask k (inputs[1]) elements.
+        Implementation is specific for awk: undefined variables equal to 0.
+        Code is minified version of following:
+
+        BEGIN {sum = 0; array = [0, ..., 0]}
+        mod = NR % k
+        sum = sum + value
+        if(NR > k){
+            sum = sum - array[mod];  # remove old elements
+            output = sum / k
+        } else {
+            output = sum / NR
+        }
+        array[mod] = value
+
+        Modified version:
+            mod = NR % k
+            sum += (value - array[mod])
+            array[mod] = value
+            output = sum / (NR > k ? k : NR)
+
+        Average version initial code:
+            if (NR == 1) {
+                output = value
+            } else {
+                output = ((NR - 1) * output + value) / NR
+            }
+        Minified:
+            o = (NR == 1 ? v : ((NR - 1) * {o} + {v}) / NR)
+        Minified awk specific:
+            o = ((NR - 1) * {o} + {v}) / NR
+
+        """
+        if len(inputs) > 2:
+            raise ValueError("AVG function: too many arguments (>2)")
+
+        value = inputs[0].title
+        if len(inputs) == 1:
+            code = "{o} = ((NR - 1) * {o} + {v}) / NR".format(
+                o=output, v=value)
+        else:
+            window_size = int(inputs[1].value)
+            code = "; ".join([
+                "__sum_mod{o} = NR % {size}",
+                "__sum{o} += ({v} - __sum_array{o}[__sum_mod{o}])",
+                "__sum_array{o}[__sum_mod{o}] = {v}",
+                "{o} = __sum{o} / (NR > {size} ? {size} : NR)",
+            ]).format(o=output, v=value, size=window_size)
+
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_EMA(self, output, inputs):
+        """ Transform exponential moving average.
+
+        inputs: param, window size, alpha (optional)
+        alpha default = 2 / (1 + window_size)
+        it is possible to set alpha = 3 / (1 + window_size) in this case
+        in the first N elements there is 1 - exp(-3) = 95% of tatal weight.
+
+        Usage:
+            x = EMA(a, 5)
+
+        NR == 1 ? {output} = {value} :
+            {output} = {alpha} * {value} + (1 - {alpha}) * {output}"
+
+        """
+        if len(inputs) > 2:
+            raise ValueError("EMA function: too many arguments (>2)")
+
+        value = inputs[0].title
+        window_size = int(inputs[1].value)
+        if len(inputs) == 3:
+            alpha = inputs[2].value
+        else:
+            alpha = 2.0 / (1 + window_size)
+
+        code = "{o} = (NR == 1 ? {v} : {a} * {v} + {b} * {o})".format(
+            o=output, v=value, a=alpha, b=1-alpha)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def transform_PREV(self, output, inputs):
+        """ Previous value of input"""
+        value = inputs[0].title
+        code = "{o} = prev{o}; prev{o} = {v}"
+        # code = "{o} = prev{o}; prev{o} = {v}"
+        code = code.format(o=output, v=value)
+        expression = Expression(code, context=self.context)
+        return expression
+
+    def _transform_MinMax(self, output, inputs, comparison=None):
+        """ Get Min/Max value.
+
+        Works with both total and moving maximum/minimum.
+
+        Parameters:
+        -----------
+        comparison: ">" -> Max, "<" -> Min
+
+        Two deques with values and indexes: dv and di
+
+        """
+        if len(inputs) > 2:
+            raise ValueError("Function should have 1 or 2 arguments")
+
+        value = inputs[0].title
+        if len(inputs) == 1:
+            code = "{o} = ({v} {c} {o} || NR == 1 ? {v} : {o})".format(
+                o=output, v=value, c=comparison)
+            expression = Expression(code, context=self.context)
+        else:
+            window_size = int(inputs[1].value)
+            begin = "deque_init(dv{o}); deque_init(di{o})".format(o=output)
+            code = "\n".join([
+                "while(!deque_is_empty(dv{o}) && {v} {c}= deque_back(dv{o})) {{",
+                "  deque_pop_back(dv{o}); deque_pop_back(di{o})",
+                "}}",
+                "if (NR > {size}) {{",
+                "  while(!deque_is_empty(dv{o}) && deque_front(di{o}) <= NR - {size}) {{",
+                "    deque_pop_front(dv{o}); deque_pop_front(di{o})",
+                "  }}\n}}",
+                "deque_push_back(dv{o}, {v}); deque_push_back(di{o}, NR)",
+                "{o} = deque_front(dv{o})"
+            ]).format(
+                o=output, v=value, size=window_size, c=comparison)
+
+            expression = Expression(
+                code, begin=begin, context=self.context,
+                modules=[AWKBaseProgram.MODULES.DEQUE]
+            )
+        return expression
+
+    def transform_MIN(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison="<")
+
+    def transform_MAX(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison=">")
+
+    def transform_max(self, output, inputs):
+        # FIXME: check input, validate, clean.
+        code = "{output} = ({a} > {b} ? {a}: {b})".format(
+            output=output, a=inputs[0].title, b=inputs[1].title)
+        expression = Expression(code, context=self.context)
+        return expression
+
+
+class GroupExpression(Expression):
+
+    """ Expression for group operations."""
+
+    def transform_FIRST(self, output, inputs):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
+        code = ""
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
+
+    def transform_LAST(self, output, inputs):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
+        code = "{o} = {v}".format(o=output, v=inputs[0].title)
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
+
+    def _transform_MinMax(self, output, inputs, comparison):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
+        code = "{o} = ({v} {c} {o} || NR == 1 ? {v} : {o})".format(
+            o=output, v=inputs[0].title, c=comparison)
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
+
+    def transform_MIN(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison="<")
+
+    def transform_MAX(self, output, inputs):
+        return self._transform_MinMax(output, inputs, comparison=">")
+
+    def transform_SUM(self, output, inputs):
+        begin = "{o} = {v}".format(o=output, v=inputs[0].title)
+        code = "{o} += {v}".format(o=output, v=inputs[0].title)
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
+
+    def transform_COUNT(self, output, inputs):
+        begin = "{o} = 1".format(o=output)
+        code = "{o}++".format(o=output)
+        expression = Expression(code, begin=begin, context=self.context)
+        return expression
+
+#####
+# scripts.py module
+#####
+""" Scripts of tool."""
+import argparse
+import itertools
+import os
+import re
+import subprocess
+import sys
+import tempfile
+from distutils.spawn import find_executable
+
+
+AWK_INTERPRETER = find_executable(os.environ.get('AWKPATH', 'awk'))
+
+
+def add_common_arguments(parser):
+    parser.add_argument(
+        '--version', action='version',
+        version='%(prog)s {version}'.format(version=__version__))
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    # If args.header is '' (default), get it from input files.
+    # If header is None: deduce it from the input
+    # If header is set, user whatever is set.
+    parser.add_argument(
+        '-H', '--header', nargs='?', default='', type=str,
+        help="Header of the output data")
+    parser.add_argument(
+        '-N', '--no-header', action='store_true', help="Do not output header")
+    return parser
+
+
+def cat():
+    """ cat function.
+
+    tact file1, file2
+
+    """
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Concatenate files and print on the standard output"
+    )
+    add_common_arguments(parser)
+
+    args = parser.parse_args()
+    kwargs = {}
+    if args.header is not None and len(args.header) > 0:
+        kwargs["header"] = args.header
+    if args.header is None:
+        kwargs["should_generate_header"] = True
+    files = FileList(args.files, **kwargs)
+
+    if not args.no_header:
+        sys.stdout.write(files.header + '\n')
+        sys.stdout.flush()
+
+    files("cat")
+
+
+def tail():
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Tail files and print on the standard output"
+    )
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument('-n', '--lines', default=10)
+    add_common_arguments(parser)
+
+    args = parser.parse_args()
+    kwargs = {}
+    if args.header is not None and len(args.header) > 0:
+        kwargs["header"] = args.header
+    if args.header is None:
+        kwargs["should_generate_header"] = True
+    files = FileList(args.files, **kwargs)
+
+    if not args.no_header:
+        sys.stdout.write(files.header + '\n')
+        sys.stdout.flush()
+
+    command = "tail -q" + " -n{}".format(args.lines) if args.lines else ""
+    files(command)
+
+
+def srt():
+    """ sort function.
+
+    tsrt -k field1 -k field2 file1
+
+    """
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Sort lines of text files"
+    )
+    parser.add_argument(
+        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    parser.add_argument('-k', '--keys', action="append", default=[])
+    add_common_arguments(parser)
+
+    args = parser.parse_args()
+    kwargs = {}
+    if args.header is not None and len(args.header) > 0:
+        kwargs["header"] = args.header
+    if args.header is None:
+        kwargs["should_generate_header"] = True
+    files = FileList(args.files, **kwargs)
+
+    fields = [f.title for f in files.description.fields]
+    order = [OrderedField.parse(key) for key in args.keys]
+    options = [
+        "-k{0},{0}{1}{2}".format(
+            fields.index(f.title) + 1, f.sort_type, f.sort_order)
+        for f in order
+    ]
+
+    if not args.no_header:
+        sys.stdout.write(files.header + '\n')
+        sys.stdout.flush()
+
+    files("sort", *options)
+
+
+def awk():
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Perform a map operation on all FILE(s)"
+        "and write result to standard output.\n"
+        "Current awk interpreter: '{}'."
+        "To use specific AWK interpreter set AWKPATH environment variable:"
+        "export AWKPATH=$(which mawk)".format(AWK_INTERPRETER)
+    )
+    add_common_arguments(parser)
+    parser.add_argument('-a', '--all-columns', action='store_true',
+                        default=False,
+                        help="Output all of the original columns first")
+    # FIXME: does MUTABLE default=[] value affect the execution?
+    parser.add_argument('-o', '--output', action="append",
+                        help="Output fields", default=[])
+    parser.add_argument('-f', '--filter', action="append", default=[],
+                        help="Filter expression")
+    parser.add_argument('-v', '--variables', action="append", default=[],
+                        help="Assigns value to program variable var")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="Print result program")
+    args = parser.parse_args()
+    files = FileList(args.files)
+    program = AWKStreamProgram(
+        files.description.fields,
+        filter_expressions=args.filter,
+        output_expressions=([
+            f.title for f in files.description.fields
+        ] if args.all_columns else []) + args.output
+    )
+
+    if args.debug:
+        sys.stdout.write("%s\n" % program)
+
+    description = DataDescription([
+        Field(o.title, o._type) for o in program.output
+        if o.title and not o.title.startswith('_')
+    ])
+    if not args.no_header:
+        sys.stdout.write(str(description) + '\n')
+        sys.stdout.flush()
+
+    files(AWK_INTERPRETER, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+
+
+def grp():
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Perform a group operation on all FILE(s)"
+        "and write result to standard output.\n"
+        "Current awk interpreter: '{}'."
+        "To use specific AWK interpreter set AWKPATH environment variable:"
+        "export AWKPATH=$(which mawk).".format(AWK_INTERPRETER)
+    )
+    add_common_arguments(parser)
+    parser.add_argument('-k', '--groupkey', help="Group expression")
+    parser.add_argument('-g', '--groupexpressions', action="append",
+                        default=[], help="Group expression")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="Print result program")
+    args = parser.parse_args()
+    files = FileList(args.files)
+
+    program = AWKGroupProgram(
+        files.description.fields,
+        group_key=args.groupkey,
+        group_expressions=args.groupexpressions
+    )
+
+    if args.debug:
+        sys.stdout.write("%s\n" % program)
+
+    description = DataDescription([
+        Field(o.title, o._type) for o in program.key + program.output
+        if o.title and not o.title.startswith('_')
+    ])
+
+    if not args.no_header:
+        sys.stdout.write(str(description) + '\n')
+        sys.stdout.flush()
+
+    files(AWK_INTERPRETER, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+
+
+def pretty():
+    """ Prettify output.
+
+    Uses sys.stdin only
+    tcat file | tpretty
+
+    """
+    header = sys.stdin.readline()
+    fields = DataDescription.parse(header).fields
+    column_widths = [len(str(field)) for field in fields]
+
+    file_name = tempfile.mkstemp()[1]
+    with open(file_name, 'w') as f:
+        for line in sys.stdin:
+            for findex, field in enumerate(line.rstrip('\n').split()):
+                column_widths[findex] = max(column_widths[findex], len(field))
+            f.write(line)
+
+    column_widths = [x + 2 for x in column_widths]
+    print("|".join([
+        (" {} ".format(str(_f))).ljust(x)
+        for x, _f in itertools.izip(column_widths, fields)
+    ]))
+    print("+".join(["-" * x for x in column_widths]))
+    with open(file_name, 'r') as f:
+        for line in f:
+            print("|".join([
+                (" {} ".format(str(field or ''))).ljust(x)
+                for x, field in zip_longest(
+                    column_widths, line.rstrip('\n').split()
+                )
+            ]))
+    os.remove(file_name)
+
+
+def plot():
+    """ Use gnuplot with tab files.
+
+    Usage
+    -----
+    cat file.tsv | tplot -e '<optional command>' script.gnu
+
+    Input file should have name: '__input'
+    Fields should start with: '__', for example instead of a use __a.
+
+    Examples
+    --------
+
+    cat data.tsv | tplot -c script.gnu  -e "set output 'output2.png'"
+    cat data.tsv | tplot -c script.gnu > ouput3.png
+
+    """
+    parser = argparse.ArgumentParser(
+        add_help=True,
+        description="Plot file from stdin with gnuplot"
+    )
+    parser.add_argument('-c', '--gnuplot-script', required=True,
+                        help="file with gnuplot commangs")
+    parser.add_argument('-e', '--gnuplot-commands',
+                        help="command1; command2; ...")
+    parser.add_argument('--debug', action='store_true', default=False,
+                        help="Print result program")
+
+    args = parser.parse_args()
+    header = sys.stdin.readline()
+    fields = DataDescription.parse(header).fields
+    file_name = tempfile.mkstemp()[1]
+
+    # Write data file to temporary location without header.
+    # NOTE: gnuplot draw from standard input feature could not be used because
+    # file mith be used several times (subplots)
+    with open(file_name, 'w') as f:
+        for line in sys.stdin:
+            f.write(line)
+
+    script_file_name = tempfile.mkstemp()[1]
+
+    substitutors = [
+        (index, re.compile("__" + title)) for title, index in sorted([
+            (field.title, index) for index, field in enumerate(fields)
+        ], reverse=True)
+    ]
+    with open(script_file_name, 'w') as f:
+        with open(args.gnuplot_script) as source:
+            for line in source:
+                line = re.sub('__input', file_name, line)
+                for index, substitutor in substitutors:
+                    line = substitutor.sub(str(index + 1), line)
+
+                f.write(line)
+
+    command = 'gnuplot{} -c {}'.format(
+        ' -e "{}"'.format(args.gnuplot_commands)
+        if args.gnuplot_commands else '',
+        script_file_name)
+
+    if args.debug:
+        sys.stdout.write("%s\n" % command)
+        with open(script_file_name) as f:
+            sys.stdout.write(f.read())
+
+    subprocess.call(command, shell=True)
+    os.remove(script_file_name)
+    os.remove(file_name)
+
+
+if __name__ == "__main__":
+    tail()
