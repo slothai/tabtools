@@ -3,10 +3,11 @@
 # This allows copying of scripts directly to user's ~/bin/ even if only internal
 # network access is allowed and user does not have administrator's privileges.
 PACKAGE_PATH="./tabtools"
+BUILD_PATH="./dist"
 
 function build_script {
-    SCRIPT_FILENAME=./dist/t$1  # add prefir 't' to the function name
-    mkdir -p ./dist
+    SCRIPT_FILENAME=$BUILD_PATH/t$1  # add prefir 't' to the function name
+    mkdir -p $BUILD_PATH
 
     echo "#!/usr/bin/env python" > $SCRIPT_FILENAME
 

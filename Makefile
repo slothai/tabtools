@@ -28,15 +28,10 @@ clean:
 	@rm -f */*.orig
 	@rm -f */*/*.py[co]
 
-.PHONY: register
-# target: register - Register module on PyPi
-register:
-	@python setup.py register
-
 .PHONY: upload
 # target: upload - Upload module on PyPi
 upload:
-	@python setup.py sdist bdist_wheel upload || echo 'Upload already'
+	@python setup.py sdist bdist_wheel upload --dist-dir pydist || echo 'Upload already'
 
 .PHONY: test
 # target: test - Runs tests
