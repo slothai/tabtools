@@ -6,12 +6,15 @@ import re
 import subprocess
 import sys
 import tempfile
+from distutils.spawn import find_executable
 
 from tabtools import __version__
 from .six import zip_longest
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
 from .awk import AWKStreamProgram, AWKGroupProgram
+
+AWK_INTERPRETER = find_executable(os.environ.get('AWKPATH', 'awk'))
 
 
 def add_common_arguments(parser):
@@ -127,8 +130,9 @@ def awk():
         add_help=True,
         description="Perform a map operation on all FILE(s)"
         "and write result to standard output.\n"
+        "Current awk interpreter: '{}'."
         "To use specific AWK interpreter set AWKPATH environment variable:"
-        "export AWKPATH=$(which mawk) && tawk ..."
+        "export AWKPATH=$(which mawk)".format(AWK_INTERPRETER)
     )
     add_common_arguments(parser)
     parser.add_argument('-a', '--all-columns', action='store_true',
@@ -164,8 +168,7 @@ def awk():
         sys.stdout.write(str(description) + '\n')
         sys.stdout.flush()
 
-    awk_interpreter = os.environ.get('AWKPATH', 'awk')
-    files(awk_interpreter, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+    files(AWK_INTERPRETER, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
 def grp():
@@ -173,11 +176,11 @@ def grp():
         add_help=True,
         description="Perform a group operation on all FILE(s)"
         "and write result to standard output.\n"
+        "Current awk interpreter: '{}'."
         "To use specific AWK interpreter set AWKPATH environment variable:"
-        "export AWKPATH=$(which mawk) && tgrp ..."
+        "export AWKPATH=$(which mawk).".format(AWK_INTERPRETER)
     )
-    parser.add_argument(
-        'files', metavar='FILE', type=argparse.FileType('r'), nargs="*")
+    add_common_arguments(parser)
     parser.add_argument('-k', '--groupkey', help="Group expression")
     parser.add_argument('-g', '--groupexpressions', action="append",
                         default=[], help="Group expression")
@@ -200,11 +203,11 @@ def grp():
         if o.title and not o.title.startswith('_')
     ])
 
-    sys.stdout.write(str(description) + '\n')
-    sys.stdout.flush()
+    if not args.no_header:
+        sys.stdout.write(str(description) + '\n')
+        sys.stdout.flush()
 
-    awk_interpreter = os.environ.get('AWKPATH', 'awk')
-    files(awk_interpreter, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+    files(AWK_INTERPRETER, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
 
 
 def pretty():
