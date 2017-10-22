@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# VERSION: 0.5.2
+# VERSION: 0.5.3
 # MIT License
 # 
 # Original work Copyright (c) 2011 Alexey Akimov (@subdir) and contributors
@@ -27,7 +27,7 @@
 # __init__.py module
 #####
 """ Tab separated files utility."""
-__version = (0, 5, 2)
+__version = (0, 5, 3)
 
 __version__ = version = '.'.join(map(str, __version))
 __project__ = PROJECT = __name__
