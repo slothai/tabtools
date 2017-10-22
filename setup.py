@@ -38,7 +38,7 @@ setup(
     author_email="k@p99.io",
     url="https://github.com/pavlov99/tabtools",
     description="Tools for tab separated files manipulation in command line",
-    long_description=read('README.md'),
+    long_description=read('README.rst'),
     entry_points={
         "console_scripts": [
             'tcat = tabtools.scripts:cat',
