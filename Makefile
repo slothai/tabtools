@@ -18,7 +18,7 @@ all: env
 .PHONY: clean
 # target: clean - Display callable targets
 clean:
-	@rm -rf build dist docs/_build
+	@rm -rf build pydist docs/_build
 	@rm -f *.py[co]
 	@rm -f *.orig
 	@rm -f *.prof
