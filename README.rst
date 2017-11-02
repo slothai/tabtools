@@ -67,12 +67,14 @@ Convert daily data to weekly:
     > head tabtools/tests/files/hsbc-stock.tsv \
         | tgrp -k 'week=strftime("%U", DateEpoch(Date))' \  # Define aggregation key (map emitter)
         -g "Date=FIRST(Date); Open=FIRST(Open); High=MAX(High)" \  # Aggregated values to compute
-        -g "Low=MIN(Low); Close=LAST(Close); Volume=SUM(Volume)"  # Extra aggregated values
+        -g "Low=MIN(Low); Close=LAST(Close); Volume=SUM(Volume)" \  # Extra aggregated values
+        | tpretty
 
-    # week  Date    Open    High    Low Close   Volume
-    07  2014-02-21  84.35   84.45   83.9    83.45   17275.0
-    08  2014-02-24  83.85   84.4    81.0    81.9    91166
-    09  2014-03-05  81.4    81.75   81.05   81.45   30207
+     week | Date       | Open  | High  | Low   | Close | Volume
+    ------+------------+-------+-------+-------+-------+---------
+     07   | 2014-02-21 | 84.35 | 84.45 | 83.9  | 83.45 | 17275.0
+     08   | 2014-02-24 | 83.85 | 84.4  | 81.0  | 81.9  | 91166
+     09   | 2014-03-05 | 81.4  | 81.75 | 81.05 | 81.45 | 30207
 
 Sort original file, compute 3 different EMA (exponential moving
 average), MACD and simple moving average indicators, select last 10
