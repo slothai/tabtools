@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# VERSION: 0.5.3
+# VERSION: 0.5.4
 # MIT License
 # 
 # Original work Copyright (c) 2011 Alexey Akimov (@subdir) and contributors
@@ -27,7 +27,7 @@
 # __init__.py module
 #####
 """ Tab separated files utility."""
-__version = (0, 5, 3)
+__version = (0, 5, 4)
 
 __version__ = version = '.'.join(map(str, __version))
 __project__ = PROJECT = __name__
@@ -1782,6 +1782,7 @@ def pretty():
     tcat file | tpretty
 
     """
+    DELIMITER = '\t'
     header = sys.stdin.readline()
     fields = DataDescription.parse(header).fields
     column_widths = [len(str(field)) for field in fields]
@@ -1789,7 +1790,7 @@ def pretty():
     file_name = tempfile.mkstemp()[1]
     with open(file_name, 'w') as f:
         for line in sys.stdin:
-            for findex, field in enumerate(line.rstrip('\n').split()):
+            for findex, field in enumerate(line.rstrip('\n').split(DELIMITER)):
                 column_widths[findex] = max(column_widths[findex], len(field))
             f.write(line)
 
@@ -1797,16 +1798,16 @@ def pretty():
     print("|".join([
         (" {} ".format(str(_f))).ljust(x)
         for x, _f in itertools.izip(column_widths, fields)
-    ]))
+    ]).rstrip())
     print("+".join(["-" * x for x in column_widths]))
     with open(file_name, 'r') as f:
         for line in f:
             print("|".join([
                 (" {} ".format(str(field or ''))).ljust(x)
                 for x, field in zip_longest(
-                    column_widths, line.rstrip('\n').split()
+                    column_widths, line.rstrip('\n').split(DELIMITER)
                 )
-            ]))
+            ]).rstrip())
     os.remove(file_name)
 
 
