@@ -233,7 +233,7 @@ def pretty():
     print("|".join([
         (" {} ".format(str(_f))).ljust(x)
         for x, _f in itertools.izip(column_widths, fields)
-    ]))
+    ]).rstrip())
     print("+".join(["-" * x for x in column_widths]))
     with open(file_name, 'r') as f:
         for line in f:
@@ -242,7 +242,7 @@ def pretty():
                 for x, field in zip_longest(
                     column_widths, line.rstrip('\n').split(DELIMITER)
                 )
-            ]))
+            ]).rstrip())
     os.remove(file_name)
 
 
