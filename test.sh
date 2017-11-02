@@ -39,3 +39,6 @@ echo -e '\n'
 
 echo "Example of stream filtering"
 cat tabtools/tests/files/sample3.tsv | python -c 'from tabtools.scripts import *; awk()' -o 'key;value' -f 'key>=value'
+
+echo "tpretty should properly handle spaces in columns"
+echo -e "# f1\tf2\ncolumn one\tcolumn two" | python -c 'from tabtools.scripts import *; pretty()'

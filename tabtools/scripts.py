@@ -217,6 +217,7 @@ def pretty():
     tcat file | tpretty
 
     """
+    DELIMITER = '\t'
     header = sys.stdin.readline()
     fields = DataDescription.parse(header).fields
     column_widths = [len(str(field)) for field in fields]
@@ -224,7 +225,7 @@ def pretty():
     file_name = tempfile.mkstemp()[1]
     with open(file_name, 'w') as f:
         for line in sys.stdin:
-            for findex, field in enumerate(line.rstrip('\n').split()):
+            for findex, field in enumerate(line.rstrip('\n').split(DELIMITER)):
                 column_widths[findex] = max(column_widths[findex], len(field))
             f.write(line)
 
@@ -239,7 +240,7 @@ def pretty():
             print("|".join([
                 (" {} ".format(str(field or ''))).ljust(x)
                 for x, field in zip_longest(
-                    column_widths, line.rstrip('\n').split()
+                    column_widths, line.rstrip('\n').split(DELIMITER)
                 )
             ]))
     os.remove(file_name)
