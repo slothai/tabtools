@@ -15,6 +15,9 @@ from .awk import AWKStreamProgram, AWKGroupProgram
 
 AWK_INTERPRETER = find_executable(os.environ.get('AWKPATH', 'awk'))
 
+# see https://stackoverflow.com/questions/14207708/ioerror-errno-32-broken-pipe-python#answer-30091579
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL)
 
 def add_common_arguments(parser):
     parser.add_argument(
@@ -242,6 +245,7 @@ def pretty():
                     column_widths, line.rstrip('\n').split(DELIMITER)
                 )
             ]).rstrip())
+
     os.remove(file_name)
 
 
