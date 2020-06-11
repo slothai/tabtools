@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # VERSION: 0.5.4
 # MIT License
 # 
@@ -31,30 +31,6 @@ __version = (0, 5, 4)
 
 __version__ = version = '.'.join(map(str, __version))
 __project__ = PROJECT = __name__
-
-#####
-# six.py module
-#####
-try:
-    from itertools import izip_longest as zip_longest
-except ImportError:
-    from itertools import zip_longest  # noqa
-
-
-def add_metaclass(metaclass):
-    """Class decorator for creating a class with a metaclass."""
-    def wrapper(cls):
-        orig_vars = cls.__dict__.copy()
-        orig_vars.pop('__dict__', None)
-        orig_vars.pop('__weakref__', None)
-        slots = orig_vars.get('__slots__')
-        if slots is not None:
-            if isinstance(slots, str):
-                slots = [slots]
-            for slots_var in slots:
-                orig_vars.pop(slots_var)
-        return metaclass(cls.__name__, cls.__bases__, orig_vars)
-    return wrapper
 
 #####
 # utils.py module
@@ -364,8 +340,7 @@ class OrderedField(object):
         return OrderedField(*args)
 
 
-@add_metaclass(ProxyMeta)
-class DataDescriptionSubheader(Proxy):
+class DataDescriptionSubheader(Proxy, metaclass=ProxyMeta):
 
     """ Subheader of file."""
 
@@ -570,7 +545,7 @@ class DataDescription(object):
         # self.subheaders = tuple(subheaders or ())
         fields = tuple(
             Field.merge(*fields) for fields in
-            zip_longest(*(dd.fields for dd in dds))
+            itertools.zip_longest(*(dd.fields for dd in dds))
         )
         key = lambda x: x.key
         subheaders = [
@@ -1570,17 +1545,20 @@ class GroupExpression(Expression):
 #####
 """ Scripts of tool."""
 import argparse
-import itertools
 import os
 import re
 import subprocess
 import sys
 import tempfile
 from distutils.spawn import find_executable
+from itertools import zip_longest
 
 
 AWK_INTERPRETER = find_executable(os.environ.get('AWKPATH', 'awk'))
 
+# see https://stackoverflow.com/questions/14207708/ioerror-errno-32-broken-pipe-python#answer-30091579
+from signal import signal, SIGPIPE, SIG_DFL
+signal(SIGPIPE, SIG_DFL)
 
 def add_common_arguments(parser):
     parser.add_argument(
@@ -1797,7 +1775,7 @@ def pretty():
     column_widths = [x + 2 for x in column_widths]
     print("|".join([
         (" {} ".format(str(_f))).ljust(x)
-        for x, _f in itertools.izip(column_widths, fields)
+        for x, _f in zip(column_widths, fields)
     ]).rstrip())
     print("+".join(["-" * x for x in column_widths]))
     with open(file_name, 'r') as f:
@@ -1808,6 +1786,7 @@ def pretty():
                     column_widths, line.rstrip('\n').split(DELIMITER)
                 )
             ]).rstrip())
+
     os.remove(file_name)
 
 
