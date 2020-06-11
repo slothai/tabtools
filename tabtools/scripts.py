@@ -1,15 +1,14 @@
 """ Scripts of tool."""
 import argparse
-import itertools
 import os
 import re
 import subprocess
 import sys
 import tempfile
 from distutils.spawn import find_executable
+from itertools import zip_longest
 
 from tabtools import __version__
-from .six import zip_longest
 from .base import OrderedField, DataDescription, Field
 from .files import FileList
 from .awk import AWKStreamProgram, AWKGroupProgram
@@ -232,7 +231,7 @@ def pretty():
     column_widths = [x + 2 for x in column_widths]
     print("|".join([
         (" {} ".format(str(_f))).ljust(x)
-        for x, _f in itertools.izip(column_widths, fields)
+        for x, _f in zip(column_widths, fields)
     ]).rstrip())
     print("+".join(["-" * x for x in column_widths]))
     with open(file_name, 'r') as f:

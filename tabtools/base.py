@@ -1,5 +1,4 @@
 """ Base package classes."""
-from .six import zip_longest, add_metaclass
 from .utils import Choices, Proxy, ProxyMeta
 import itertools
 
@@ -181,8 +180,7 @@ class OrderedField(object):
         return OrderedField(*args)
 
 
-@add_metaclass(ProxyMeta)
-class DataDescriptionSubheader(Proxy):
+class DataDescriptionSubheader(Proxy, metaclass=ProxyMeta):
 
     """ Subheader of file."""
 
@@ -387,7 +385,7 @@ class DataDescription(object):
         # self.subheaders = tuple(subheaders or ())
         fields = tuple(
             Field.merge(*fields) for fields in
-            zip_longest(*(dd.fields for dd in dds))
+            itertools.zip_longest(*(dd.fields for dd in dds))
         )
         key = lambda x: x.key
         subheaders = [

@@ -9,7 +9,7 @@ function build_script {
     SCRIPT_FILENAME=$BUILD_PATH/t$1  # add prefir 't' to the function name
     mkdir -p $BUILD_PATH
 
-    echo "#!/usr/bin/env python" > $SCRIPT_FILENAME
+    echo "#!/usr/bin/env python3" > $SCRIPT_FILENAME
 
     printf '# VERSION: ' >> $SCRIPT_FILENAME
     python -c 'from tabtools import __version__; print(__version__)' >> $SCRIPT_FILENAME
@@ -19,9 +19,6 @@ function build_script {
 
     echo -e "\n#####\n# __init__.py module\n#####" >> $SCRIPT_FILENAME
     cat $PACKAGE_PATH/__init__.py >> $SCRIPT_FILENAME
-
-    echo -e "\n#####\n# six.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/six.py >> $SCRIPT_FILENAME
 
     echo -e "\n#####\n# utils.py module\n#####" >> $SCRIPT_FILENAME
     cat $PACKAGE_PATH/utils.py >> $SCRIPT_FILENAME

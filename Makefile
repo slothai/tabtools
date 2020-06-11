@@ -46,7 +46,7 @@ lint:
 .PHONY: env
 # target: env - install python develpment packages
 env:
-	[ -d $(ENV) ] || virtualenv --no-site-packages $(ENV)
+	@python3 -m venv $(ENV)
 	$(ENV)/bin/pip install -r requirements-dev.txt
 
 .PHONY: build
