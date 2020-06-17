@@ -126,146 +126,116 @@ class TestSubheaderCount:
 
 
 class TestHeader:
-    def setUp(self):
+    def setup_method(self, method):
         self.fields = (
-            Field("a", "float"),
-            Field("b", "bool"),
+            Field("a", Field.TYPES.NUMBER),
+            Field("b", Field.TYPES.STRING),
             Field("c"),
         )
         self.subheaders = (
             SubheaderCount("COUNT", 1),
-            SubheaderOrder("ORDER", "c:asc\ta:desc:numeric"),
+            Subheader("ORDER", "a:asc"),
         )
-        meta = "Data description and licence could be here. Even #META: tags!"
-        self.meta = Subheader("META", meta)
-        self.data_description = Header(
-            fields=self.fields,
-            subheaders=self.subheaders,
-            meta=self.meta
-        )
-        self.header = "# a:float\tb:bool\tc #COUNT: 1" +\
-            " #ORDER: c:asc\ta:desc:numeric #META: {}".format(meta)
 
     def test_str(self):
-        self.assertEqual(str(self.data_description), self.header)
-
-    def test_str_no_meta(self):
-        data_description = Header(
+        header = Header(
+            delimiter='\t',
             fields=self.fields,
             subheaders=self.subheaders,
         )
-        header = "# a:float\tb:bool\tc #COUNT: 1 #ORDER: c:asc\ta:desc:numeric"
-        self.assertEqual(str(data_description), header)
+
+        assert str(header) == "a:num\tb:str\tc #COUNT:1 #ORDER:a:asc"
+
+        header.delimiter = ','
+        assert str(header) == "a:num,b:str,c #COUNT:1 #ORDER:a:asc"
 
     def test__eq__fields(self):
-        data_description = Header(
+        header1 = Header(
+            delimiter='\t',
             fields=self.fields,
             subheaders=self.subheaders,
-            meta=self.meta
         )
-        self.assertEqual(self.data_description, data_description)
+        header2 = Header(
+            delimiter='\t',
+            fields=self.fields,
+            subheaders=self.subheaders,
+        )
+        assert header1 == header2
 
-        data_description = Header(
-            fields=self.fields[1:],
-            subheaders=self.subheaders,
-            meta=self.meta
-        )
-        self.assertNotEqual(self.data_description, data_description)
-        data_description = Header(
-            fields=self.fields[1:2] + self.fields[0:1] + self.fields[2:],
-            subheaders=self.subheaders,
-            meta=self.meta
-        )
-        self.assertNotEqual(self.data_description, data_description)
+        header2.fields=self.fields[1:]
+        assert header1 != header2
+
+        header2.fields=self.fields[1:2] + self.fields[0:1] + self.fields[2:]
+        assert header1 != header2
 
     def test__eq__subheaders(self):
-        data_description = Header(
-            fields=self.fields,
-            subheaders=self.subheaders[1:],
-            meta=self.meta
-        )
-        self.assertNotEqual(self.data_description, data_description)
-        data_description = Header(
-            fields=self.fields,
-            subheaders=self.subheaders[1:] + self.subheaders[0:1],
-            meta=self.meta
-        )
-        self.assertEqual(self.data_description, data_description)
-
-    def test__eq__meta(self):
-        meta = Subheader("META", self.meta.value[:-1])
-        data_description = Header(
+        header1 = Header(
+            delimiter='\t',
             fields=self.fields,
             subheaders=self.subheaders,
-            meta=meta
         )
-        self.assertNotEqual(self.data_description, data_description)
+        header2 = Header(
+            delimiter='\t',
+            fields=self.fields,
+            subheaders=self.subheaders[1:],
+        )
+
+        assert header1 != header2
+
+        header2.subheaders=self.subheaders[1:] + self.subheaders[0:1]
+        assert header1 == header2
 
     def test_parse(self):
-        self.assertEqual(
-            Header.parse(str(self.data_description)),
-            self.data_description
+        assert Header.parse("a:num\tb:str\tc #COUNT:1 #ORDER:a:asc") == Header(
+            delimiter='\t',
+            fields=self.fields,
+            subheaders=self.subheaders
+        )
+        
+        assert Header.parse("a:num,b:str,c #COUNT:1 #ORDER:a:asc") == Header(
+            delimiter=',',
+            fields=self.fields,
+            subheaders=self.subheaders
         )
 
-    def test_parse_error(self):
-        Header.parse("# ")
-        with self.assertRaises(ValueError):
-            Header.parse("")
-
-        with self.assertRaises(ValueError):
-            Header.parse("#")
-
-        Header.parse("# a")
-        with self.assertRaises(ValueError):
-            Header.parse("a")
-
-        with self.assertRaises(ValueError):
-            Header.parse("#a")
-
-        Header.parse("# a\tb #COUNT: 1")
-        with self.assertRaises(ValueError):
-            Header.parse("# a\tb#COUNT: 1")
-
-        Header.parse("# a\tb #COUNT: 1 #ORDER: a:asc")
-        with self.assertRaises(ValueError):
-            Header.parse("# a\tb #COUNT: 1 ##ORDER: a:asc")
-
-        Header.parse("# a\tb #ORDER: b:asc")
-        with self.assertRaises(ValueError):
-            Header.parse("# a #ORDER: b:asc")
-
-    def test_merge(self):
-        dd1 = Header(
-            fields=(
-                Field("a", "int"),
-                Field("b", "float"),
-            ),
-            subheaders=(
-                HeaderSubheaderCount("COUNT", 1),
-                HeaderSubheaderOrder("ORDER", "a:asc\tb:desc:numeric"),
-            ),
-            meta="meta1"
+        assert Header.parse("a:num|b:str|c #COUNT:1 #ORDER:a:asc", delimiter="|") == Header(
+            delimiter='|',
+            fields=self.fields,
+            subheaders=self.subheaders
         )
 
-        dd2 = Header(
+    def test_union(self):
+        h1 = Header(
+            delimiter="\t",
             fields=(
-                Field("a", "str"),
-                Field("b", "bool"),
+                Field("a", Field.TYPES.NUMBER),
+                Field("b"),
             ),
             subheaders=(
                 SubheaderCount("COUNT", 1),
-                SubheaderOrder("ORDER", "a:desc"),
-            ),
-            meta="meta1"
+                Subheader("ORDER", "a:asc\tb:desc"),
+            )
         )
 
-        dd_expected = Header(
+        h2 = Header(
+            delimiter=",",
             fields=(
-                Field("a", "str"),
-                Field("b", "float"),
+                Field("a", Field.TYPES.STRING),
+                Field("b", Field.TYPES.NUMBER),
+            ),
+            subheaders=(
+                SubheaderCount("COUNT", 1),
+                Subheader("ORDER", "a:desc"),
+            )
+        )
+
+        expected = Header(
+            fields=(
+                Field("a", Field.TYPES.STRING),
+                Field("b"),
             ),
             subheaders=(
                 SubheaderCount("COUNT", 2),
             ),
         )
-        self.assertEqual(Header.merge(dd1, dd2), dd_expected)
+        assert Header.union(h1, h2) == expected

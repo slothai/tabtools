@@ -196,7 +196,7 @@ class Header:
     def __str__(self):
         return self.delimiter.join(map(str, self.fields)) +\
             "".join([
-                self.SUBHEADER_PREFIX + subheader
+                self.SUBHEADER_PREFIX + str(subheader)
                 for subheader in self.subheaders
             ])
 
@@ -223,20 +223,28 @@ class Header:
         """
         fields_subheaders = header.rstrip().split(cls.SUBHEADER_PREFIX)
 
+
+        # If delimit passed, use it. Otherwise consider tabs and commas. Replace tabs with commas and split by comma
+        if delimiter is None:
+            num_commas = fields_subheaders[0].count(',')
+            num_tabs = fields_subheaders[0].count('\t')
+            delimiter = '\t' if num_tabs > num_commas else ','
+
         fields = tuple(
-            Field.parse(f) for f in
-            fields_subheaders[0].split(delimiter)
+            Field.parse(f)
+            for f in fields_subheaders[0].split(delimiter)
         )
 
         subheaders = [Subheader.parse(s).proxy for s in fields_subheaders[1:]]
         for s in subheaders:
             s.__init__(s.key, s.value)
 
-        return Header(fields=fields, subheaders=subheaders)
+        return Header(
+            delimiter=delimiter, fields=fields, subheaders=subheaders)
 
     @classmethod
-    def merge(cls, *headers):
-        """ Merge Data Descriptions.
+    def union(cls, *headers):
+        """Union Headers.
 
         Fields should be in the same order, number of fields should be equal
 
@@ -245,17 +253,29 @@ class Header:
         :return ValueError:
 
         """
-        # self.subheaders = tuple(subheaders or ())
         fields = tuple(
-            Field.merge(*fields)
-            for fields in zip(header.fields for header in headers)
+            Field.union(*fields)
+            for fields in zip(*[header.fields for header in headers])
         )
-        key = lambda x: x.key
-        # subheaders = [
-        #     DataDescriptionSubheader(k, "").proxy.merge(*list(v))
-        #     for k, v in itertools.groupby(
-        #         sorted((x for dd in dds for x in dd.subheaders), key=key), key
-        #     )
-        # ]
-        # subheaders = tuple(x for x in subheaders if x.value)
-        return Header(fields=fields, subheaders=None)
+
+        # Note: Instantiate class to be able to merge
+        subheaders = [
+            (Subheader(k, "")).proxy.union(*list(key_subheaders))
+            for k, key_subheaders in itertools.groupby(
+                sorted([
+                    subheader
+                    for header in headers
+                    for subheader in header.subheaders
+                ], key=lambda x: x.key),
+                lambda x: x.key
+            )
+        ]
+
+        # Remove headers that could not be explicitly merged
+        subheaders = tuple(x for x in subheaders if x.value != "?")
+        
+        return Header(
+            delimiter=headers[0].delimiter,
+            fields=fields,
+            subheaders=subheaders
+        )
