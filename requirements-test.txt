@@ -1,3 +1,2 @@
 -r requirements.txt
-nose2==0.6.5
-testfixtures==4.1.2
+pytest==5.4.3
