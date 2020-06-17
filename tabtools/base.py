@@ -93,7 +93,7 @@ class Field:
 
 class Subheader(Proxy, metaclass=ProxyMeta):
 
-    """ Subheader of file."""
+    """Subheader of the file."""
 
     def __init__(self, key, value):
         if not key.isalnum():
@@ -105,31 +105,34 @@ class Subheader(Proxy, metaclass=ProxyMeta):
         return hash((self.key, self.value))
 
     def __str__(self):
-        return "{}: {}".format(self.key.upper(), self.value)
+        return "{}:{}".format(self.key.upper(), self.value)
 
     def __repr__(self):
         return "<{} ({})>".format(self.__class__.__name__, str(self))
 
     def __eq__(self, other):
         return isinstance(other, self.__class__) and \
-            self.key == other.key and self.value == other.value
+            self.key == other.key and \
+            self.value == other.value
 
     @classmethod
     def parse(cls, subheader):
-        """ Parse subheader from given string.
+        """Parse subheader from a given string.
 
-        :return DataDescriptionSubheader:
+        :return Subheader:
 
         """
-        key, value = subheader.split(": ", 1)
+        key, value = subheader.split(":", 1)
         return cls(key, value)
 
     @classmethod
-    def merge(cls, *subheaders):
-        """ Merge subheaders with the same name.
+    def union(cls, *subheaders):
+        """Union subheaders with the same name.
 
         As far as subheader could consist of any information, it needs to be
-        handled manually. By default method return subheader with empty value.
+        handled manually. By default return a subheader with "?" value.
+        ..note: use "?" because it is short and it's value might not matter.
+        In concreate class implementation determine what the value should be.
 
         :param tuple(Subheader): subheader
         :return Subheader:
@@ -141,22 +144,10 @@ class Subheader(Proxy, metaclass=ProxyMeta):
 
         subheader_keys = {s.key for s in subheaders}
         if len(subheader_keys) != 1:
-            raise ValueError("Subheaders keys are not equal {} ".format(
+            raise ValueError("Subheader keys are not equal {} ".format(
                 subheader_keys))
 
-        return DataDescriptionSubheader(subheaders[0].key, "")
-
-
-class SubheaderOrder(Subheader):
-
-    """ Subheader for fields order information."""
-
-    def __init__(self, key, value):
-        super(DataDescriptionSubheaderOrder, self).__init__(key, value)
-        self.ordered_fields = [
-            OrderedField.parse(f)
-            for f in value.split(DataDescription.DELIMITER)
-        ]
+        return Subheader(subheaders[0].key, "?")
 
 
 class SubheaderCount(Subheader):
@@ -165,18 +156,18 @@ class SubheaderCount(Subheader):
 
     def __init__(self, key, value):
         value = int(value)
-        super(DataDescriptionSubheaderCount, self).__init__(key, value)
+        super(SubheaderCount, self).__init__(key, value)
 
     @classmethod
-    def merge(cls, *subheaders):
-        """ Merge SubheaderCount subheaders.
+    def union(cls, *subheaders):
+        """Union SubheaderCount subheaders.
 
-        :param tuple(DataDescriptionSubheaderCount): subheaders
-        :return DataDescriptionSubheaderCount:
+        :param tuple(SubheaderCount): subheaders
+        :return SubheaderCount:
         :return ValueError:
 
         """
-        subheader = DataDescriptionSubheader.merge(*subheaders).proxy
+        subheader = Subheader.union(*subheaders).proxy
         subheader.value = sum(x.value for x in subheaders)
         return subheader
 
@@ -192,8 +183,6 @@ class Header:
     FIELD = ^<str>field_title(:<str>field_type)?$
     SUBHEADER = ^ #<subheader_key>: <subheader_value>$
     SUBHEADER:COUNT, value = size of document
-    SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
-    ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
 
     """
 

@@ -1,6 +1,6 @@
 import pytest
 
-from ..base import Field, Header, Subheader, SubheaderCount, SubheaderOrder
+from ..base import Field, Header, Subheader, SubheaderCount
 
 
 class TestField:
@@ -66,99 +66,63 @@ class TestField:
 
 
 class TestSubheader:
-    def setUp(self):
-        self.subheader1 = Subheader("key", "value")
-        self.subheader2 = Subheader("key", "value")
-        self.subheader3 = Subheader("ORDER", "a:asc b:desc")
-
     def test_str(self):
-        self.assertEqual(str(self.subheader1), "KEY: value")
-        self.assertEqual(str(self.subheader3), "ORDER: a:asc b:desc")
+        assert str(Subheader("key", "value")) == "KEY:value"
+        assert str(Subheader("order", "a:asc b:desc")) == "ORDER:a:asc b:desc"
 
     def test__eq__(self):
-        self.assertEqual(self.subheader1, self.subheader2)
-        self.assertNotEqual(self.subheader1, self.subheader3)
+        assert Subheader("key", "value") == Subheader("KEY", "value")
+        assert Subheader("key", "value") != Subheader("order", "a:asc b:desc")
 
     def test__eq__inherited(self):
         class SubheaderChild(Subheader):
             pass
 
-        subheader_child1 = SubheaderChild(
-            self.subheader1.key, self.subheader1.value)
-        subheader_child2 = SubheaderChild(
-            self.subheader2.key, self.subheader2.value)
-        self.assertNotEqual(self.subheader1, subheader_child1)
-        self.assertEqual(subheader_child1, subheader_child2)
+        subheader_child1 = SubheaderChild("key", "value")
+        subheader_child2 = SubheaderChild("key", "value")
+
+        assert subheader_child1 == subheader_child2
+        assert Subheader("key", "value") != subheader_child1
 
     def test_parse(self):
-        self.assertEqual(
-            Subheader.parse("key: value"),
-            self.subheader1,
-        )
-        self.assertEqual(
-            Subheader.parse("ORDER: a:asc b:desc"),
-            self.subheader3,
-        )
+        assert Subheader.parse("key:value") == Subheader("key", "value")
+        assert Subheader.parse("ORDER:a:asc b:desc") == Subheader("order", "a:asc b:desc")
 
     def test_parse_incorrect(self):
-        Subheader.parse("key: value")
-        with self.assertRaises(ValueError):
+        Subheader.parse("key:value")
+        with pytest.raises(ValueError):
             Subheader.parse("key value")
 
-        with self.assertRaises(ValueError):
-            Subheader.parse("key:value")
+    def test_union(self):
+        assert Subheader.union(
+            Subheader("k", "v1"),
+            Subheader("k", "v2")
+        ) == Subheader("k", "?")
 
-    def test_merge(self):
-        self.assertEqual(
-            Subheader.merge(
-                Subheader("k", "v1"),
-                Subheader("k", "v2")
-            ),
-            Subheader("k", "")
-        )
+    def test_union_error(self):
+        with pytest.raises(ValueError):
+            Subheader.union()
 
-    def test_merge_error(self):
-        with self.assertRaises(ValueError):
-            Subheader.merge()
-            Subheader.merge(
+        with pytest.raises(ValueError):
+            Subheader.union(
                 Subheader("k1", "v"),
                 Subheader("k2", "v")
             )
-
-
-class TestSubheaderOrder:
-    def setUp(self):
-        self.subheader = SubheaderOrder(
-            "ORDER", "a:asc\tb:desc:numeric")
-        self.ordered_fields = [
-            OrderedField("a"),
-            OrderedField("b", sort_type="n", sort_order="r"),
-        ]
-
-    def test_init(self):
-        self.assertEqual(self.subheader.ordered_fields, self.ordered_fields)
-
-    def test_parse(self):
-        subheader = SubheaderOrder.parse(str(self.subheader))
-        self.assertEqual(self.subheader, subheader)
 
 
 class TestSubheaderCount:
     def test_init_value(self):
         subheader1 = SubheaderCount("count", 1)
         subheader2 = SubheaderCount("count", "1")
-        self.assertEqual(subheader1.value, 1)
-        self.assertEqual(subheader2.value, 1)
-        self.assertEqual(subheader1, subheader2)
+        assert subheader1.value == 1
+        assert subheader2.value == 1
+        assert subheader1 == subheader2
 
     def test_merge(self):
-        self.assertEqual(
-            SubheaderCount.merge(
-                SubheaderCount("count", 1),
-                SubheaderCount("count", 1)
-            ),
+        assert SubheaderCount.union(
+            SubheaderCount("count", 1),
             SubheaderCount("count", 2)
-        )
+        ) == SubheaderCount("count", 3)
 
 
 class TestHeader:
