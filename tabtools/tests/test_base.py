@@ -1,102 +1,72 @@
-import unittest
+import pytest
 
-from ..base import (
-    DataDescription,
-    DataDescriptionSubheader,
-    DataDescriptionSubheaderOrder,
-    DataDescriptionSubheaderCount,
-    Field,
-    OrderedField,
-)
+from ..base import (Field, Header, OrderedField, Subheader, SubheaderCount,
+                    SubheaderOrder)
 
 
-class TestField(unittest.TestCase):
+class TestField:
     def test_init(self):
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             Field("")
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             Field("a", "unknown_type")
 
-        with self.assertRaises(ValueError):
+        with pytest.raises(ValueError):
             Field("title with space")
 
     def test_str_no_type(self):
-        self.assertEqual(str(Field("a")), "a")
-        self.assertEqual(str(Field("a", None)), "a")
+        assert str(Field("a")) == "a"
+        assert str(Field("a", None)) ==  "a"
 
     def test_str_with_type(self):
-        self.assertEqual(str(Field("a", "str")), "a:str")
+        assert str(Field("a", Field.TYPES.STRING)) == "a:str"
 
     def test__eq__(self):
-        self.assertEqual(Field("a"), Field("a"))
-        self.assertEqual(Field("a"), Field("a", None))
-        self.assertEqual(Field("a", "str"), Field("a", "str"))
+        assert Field("a") == Field("a")
+        assert Field("a") == Field("a", None)
+        assert Field("a", Field.TYPES.STRING) == Field("a", Field.TYPES.STRING)
 
-        self.assertNotEqual(Field("a"), Field("b"))
-        self.assertNotEqual(Field("a"), Field("a", "str"))
-        self.assertNotEqual(Field("a", "int"), Field("a", "str"))
+        assert Field("a") != Field("b")
+        assert Field("a") != Field("a", Field.TYPES.STRING)
+        assert Field("a", Field.TYPES.NUMBER) != Field("a", Field.TYPES.STRING)
 
     def test_parse(self):
-        self.assertEqual(Field.parse("a"), Field("a"))
-        self.assertEqual(Field.parse("a:str"), Field("a", "str"))
+        assert Field.parse("a") == Field("a")
+        assert Field.parse("a:str") == Field("a", Field.TYPES.STRING)
 
     def test_parse_error(self):
-        with self.assertRaises(ValueError):
-            Field.parse("a:")
+        with pytest.raises(ValueError):
+            Field.parse("a:")  # type is missing
 
-        with self.assertRaises(ValueError):
-            Field.parse("a str")
+        with pytest.raises(ValueError):
+            Field.parse("a str")  # space in field title
 
-    def test_combine_types(self):
-        self.assertEqual(Field.combine_types('null'), 'null')
-        self.assertEqual(Field.combine_types('null', 'str'), 'null')
-        self.assertEqual(Field.combine_types('str', 'str'), 'str')
-        self.assertEqual(Field.combine_types('bool', 'int'), 'int')
-        self.assertEqual(Field.combine_types('int', 'float'), 'float')
-        self.assertEqual(Field.combine_types('float', 'str'), 'str')
-        self.assertEqual(Field.combine_types('bool', 'int', 'float', 'str'), 'str')
+    def test_union_simple(self):
+        assert Field.union(Field("a")) ==  Field("a")
+        assert Field.union(Field("a"), Field("a")) == Field("a")
 
-    def test_merge_simple(self):
-        self.assertEqual(Field.merge(Field("a")), Field("a"))
-        self.assertEqual(Field.merge(Field("a"), Field("a")), Field("a"))
+    def test_union_different_names(self):
+        assert Field.union(Field("a"), Field("b")) == Field("a")
+        assert Field.union(Field("b"), Field("a")) == Field("b")
 
-    def test_merge_different_names(self):
-        self.assertEqual(Field.merge(Field("a"), Field("b")), Field("a"))
-        self.assertEqual(Field.merge(Field("b"), Field("a")), Field("b"))
+    def test_union_same_type(self):
+        assert Field.union(Field("a"), Field("a")) == Field("a")
 
-    def test_merge_different_types(self):
-        self.assertEqual(
-            Field.merge(Field("a", "str"), Field("a")),
-            Field("a")
-        )
-        self.assertEqual(
-            Field.merge(Field("a", "null"), Field("a")),
-            Field("a")
-        )
-        self.assertEqual(
-            Field.merge(Field("a", "str"), Field("a", "str")),
-            Field("a", "str")
-        )
-        self.assertEqual(
-            Field.merge(Field("a", "bool"), Field("a", "int")),
-            Field("a", "int")
-        )
-        self.assertEqual(
-            Field.merge(Field("a", "int"), Field("a", "float")),
-            Field("a", "float")
-        )
-        self.assertEqual(
-            Field.merge(Field("a", "float"), Field("a", "str")),
-            Field("a", "str")
-        )
+        for t in Field.TYPES:
+            assert Field.union(Field("a", t), Field("a", t)) == Field("a", t)
 
-    def test_merge_error(self):
-        with self.assertRaises(ValueError):
-            Field.merge()
+    def test_union_different_types(self):
+        assert Field.union(Field("a", Field.TYPES.STRING), Field("a")) == Field("a")
+        assert Field.union(Field("a", Field.TYPES.NUMBER), Field("a")) == Field("a")
+        assert Field.union(Field("a", Field.TYPES.STRING), Field("a", Field.TYPES.NUMBER)) == Field("a", Field.TYPES.STRING)
+
+    def test_union_error(self):
+        with pytest.raises(ValueError):
+            Field.union()
 
 
-class TestOrderedField(unittest.TestCase):
+class TestOrderedField:
     def test_init(self):
         with self.assertRaises(ValueError):
             OrderedField("field with space")
@@ -243,11 +213,11 @@ class TestOrderedField(unittest.TestCase):
             "a:desc:numeric")
 
 
-class TestDataDescriptionSubheader(unittest.TestCase):
+class TestSubheader:
     def setUp(self):
-        self.subheader1 = DataDescriptionSubheader("key", "value")
-        self.subheader2 = DataDescriptionSubheader("key", "value")
-        self.subheader3 = DataDescriptionSubheader("ORDER", "a:asc b:desc")
+        self.subheader1 = Subheader("key", "value")
+        self.subheader2 = Subheader("key", "value")
+        self.subheader3 = Subheader("ORDER", "a:asc b:desc")
 
     def test_str(self):
         self.assertEqual(str(self.subheader1), "KEY: value")
@@ -258,55 +228,55 @@ class TestDataDescriptionSubheader(unittest.TestCase):
         self.assertNotEqual(self.subheader1, self.subheader3)
 
     def test__eq__inherited(self):
-        class DataDescriptionSubheaderChild(DataDescriptionSubheader):
+        class SubheaderChild(Subheader):
             pass
 
-        subheader_child1 = DataDescriptionSubheaderChild(
+        subheader_child1 = SubheaderChild(
             self.subheader1.key, self.subheader1.value)
-        subheader_child2 = DataDescriptionSubheaderChild(
+        subheader_child2 = SubheaderChild(
             self.subheader2.key, self.subheader2.value)
         self.assertNotEqual(self.subheader1, subheader_child1)
         self.assertEqual(subheader_child1, subheader_child2)
 
     def test_parse(self):
         self.assertEqual(
-            DataDescriptionSubheader.parse("key: value"),
+            Subheader.parse("key: value"),
             self.subheader1,
         )
         self.assertEqual(
-            DataDescriptionSubheader.parse("ORDER: a:asc b:desc"),
+            Subheader.parse("ORDER: a:asc b:desc"),
             self.subheader3,
         )
 
     def test_parse_incorrect(self):
-        DataDescriptionSubheader.parse("key: value")
+        Subheader.parse("key: value")
         with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse("key value")
+            Subheader.parse("key value")
 
         with self.assertRaises(ValueError):
-            DataDescriptionSubheader.parse("key:value")
+            Subheader.parse("key:value")
 
     def test_merge(self):
         self.assertEqual(
-            DataDescriptionSubheader.merge(
-                DataDescriptionSubheader("k", "v1"),
-                DataDescriptionSubheader("k", "v2")
+            Subheader.merge(
+                Subheader("k", "v1"),
+                Subheader("k", "v2")
             ),
-            DataDescriptionSubheader("k", "")
+            Subheader("k", "")
         )
 
     def test_merge_error(self):
         with self.assertRaises(ValueError):
-            DataDescriptionSubheader.merge()
-            DataDescriptionSubheader.merge(
-                DataDescriptionSubheader("k1", "v"),
-                DataDescriptionSubheader("k2", "v")
+            Subheader.merge()
+            Subheader.merge(
+                Subheader("k1", "v"),
+                Subheader("k2", "v")
             )
 
 
-class TestDataDescriptionSubheaderOrder(unittest.TestCase):
+class TestSubheaderOrder:
     def setUp(self):
-        self.subheader = DataDescriptionSubheaderOrder(
+        self.subheader = SubheaderOrder(
             "ORDER", "a:asc\tb:desc:numeric")
         self.ordered_fields = [
             OrderedField("a"),
@@ -317,29 +287,29 @@ class TestDataDescriptionSubheaderOrder(unittest.TestCase):
         self.assertEqual(self.subheader.ordered_fields, self.ordered_fields)
 
     def test_parse(self):
-        subheader = DataDescriptionSubheaderOrder.parse(str(self.subheader))
+        subheader = SubheaderOrder.parse(str(self.subheader))
         self.assertEqual(self.subheader, subheader)
 
 
-class TestDataDescriptionSubheaderCount(unittest.TestCase):
+class TestSubheaderCount:
     def test_init_value(self):
-        subheader1 = DataDescriptionSubheaderCount("count", 1)
-        subheader2 = DataDescriptionSubheaderCount("count", "1")
+        subheader1 = SubheaderCount("count", 1)
+        subheader2 = SubheaderCount("count", "1")
         self.assertEqual(subheader1.value, 1)
         self.assertEqual(subheader2.value, 1)
         self.assertEqual(subheader1, subheader2)
 
     def test_merge(self):
         self.assertEqual(
-            DataDescriptionSubheaderCount.merge(
-                DataDescriptionSubheaderCount("count", 1),
-                DataDescriptionSubheaderCount("count", 1)
+            SubheaderCount.merge(
+                SubheaderCount("count", 1),
+                SubheaderCount("count", 1)
             ),
-            DataDescriptionSubheaderCount("count", 2)
+            SubheaderCount("count", 2)
         )
 
 
-class TestDataDescription(unittest.TestCase):
+class TestHeader:
     def setUp(self):
         self.fields = (
             Field("a", "float"),
@@ -347,12 +317,12 @@ class TestDataDescription(unittest.TestCase):
             Field("c"),
         )
         self.subheaders = (
-            DataDescriptionSubheaderCount("COUNT", 1),
-            DataDescriptionSubheaderOrder("ORDER", "c:asc\ta:desc:numeric"),
+            SubheaderCount("COUNT", 1),
+            SubheaderOrder("ORDER", "c:asc\ta:desc:numeric"),
         )
         meta = "Data description and licence could be here. Even #META: tags!"
-        self.meta = DataDescriptionSubheader("META", meta)
-        self.data_description = DataDescription(
+        self.meta = Subheader("META", meta)
+        self.data_description = Header(
             fields=self.fields,
             subheaders=self.subheaders,
             meta=self.meta
@@ -364,7 +334,7 @@ class TestDataDescription(unittest.TestCase):
         self.assertEqual(str(self.data_description), self.header)
 
     def test_str_no_meta(self):
-        data_description = DataDescription(
+        data_description = Header(
             fields=self.fields,
             subheaders=self.subheaders,
         )
@@ -372,20 +342,20 @@ class TestDataDescription(unittest.TestCase):
         self.assertEqual(str(data_description), header)
 
     def test__eq__fields(self):
-        data_description = DataDescription(
+        data_description = Header(
             fields=self.fields,
             subheaders=self.subheaders,
             meta=self.meta
         )
         self.assertEqual(self.data_description, data_description)
 
-        data_description = DataDescription(
+        data_description = Header(
             fields=self.fields[1:],
             subheaders=self.subheaders,
             meta=self.meta
         )
         self.assertNotEqual(self.data_description, data_description)
-        data_description = DataDescription(
+        data_description = Header(
             fields=self.fields[1:2] + self.fields[0:1] + self.fields[2:],
             subheaders=self.subheaders,
             meta=self.meta
@@ -393,13 +363,13 @@ class TestDataDescription(unittest.TestCase):
         self.assertNotEqual(self.data_description, data_description)
 
     def test__eq__subheaders(self):
-        data_description = DataDescription(
+        data_description = Header(
             fields=self.fields,
             subheaders=self.subheaders[1:],
             meta=self.meta
         )
         self.assertNotEqual(self.data_description, data_description)
-        data_description = DataDescription(
+        data_description = Header(
             fields=self.fields,
             subheaders=self.subheaders[1:] + self.subheaders[0:1],
             meta=self.meta
@@ -407,8 +377,8 @@ class TestDataDescription(unittest.TestCase):
         self.assertEqual(self.data_description, data_description)
 
     def test__eq__meta(self):
-        meta = DataDescriptionSubheader("META", self.meta.value[:-1])
-        data_description = DataDescription(
+        meta = Subheader("META", self.meta.value[:-1])
+        data_description = Header(
             fields=self.fields,
             subheaders=self.subheaders,
             meta=meta
@@ -417,69 +387,69 @@ class TestDataDescription(unittest.TestCase):
 
     def test_parse(self):
         self.assertEqual(
-            DataDescription.parse(str(self.data_description)),
+            Header.parse(str(self.data_description)),
             self.data_description
         )
 
     def test_parse_error(self):
-        DataDescription.parse("# ")
+        Header.parse("# ")
         with self.assertRaises(ValueError):
-            DataDescription.parse("")
+            Header.parse("")
 
         with self.assertRaises(ValueError):
-            DataDescription.parse("#")
+            Header.parse("#")
 
-        DataDescription.parse("# a")
+        Header.parse("# a")
         with self.assertRaises(ValueError):
-            DataDescription.parse("a")
+            Header.parse("a")
 
         with self.assertRaises(ValueError):
-            DataDescription.parse("#a")
+            Header.parse("#a")
 
-        DataDescription.parse("# a\tb #COUNT: 1")
+        Header.parse("# a\tb #COUNT: 1")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a\tb#COUNT: 1")
+            Header.parse("# a\tb#COUNT: 1")
 
-        DataDescription.parse("# a\tb #COUNT: 1 #ORDER: a:asc")
+        Header.parse("# a\tb #COUNT: 1 #ORDER: a:asc")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a\tb #COUNT: 1 ##ORDER: a:asc")
+            Header.parse("# a\tb #COUNT: 1 ##ORDER: a:asc")
 
-        DataDescription.parse("# a\tb #ORDER: b:asc")
+        Header.parse("# a\tb #ORDER: b:asc")
         with self.assertRaises(ValueError):
-            DataDescription.parse("# a #ORDER: b:asc")
+            Header.parse("# a #ORDER: b:asc")
 
     def test_merge(self):
-        dd1 = DataDescription(
+        dd1 = Header(
             fields=(
                 Field("a", "int"),
                 Field("b", "float"),
             ),
             subheaders=(
-                DataDescriptionSubheaderCount("COUNT", 1),
-                DataDescriptionSubheaderOrder("ORDER", "a:asc\tb:desc:numeric"),
+                HeaderSubheaderCount("COUNT", 1),
+                HeaderSubheaderOrder("ORDER", "a:asc\tb:desc:numeric"),
             ),
             meta="meta1"
         )
 
-        dd2 = DataDescription(
+        dd2 = Header(
             fields=(
                 Field("a", "str"),
                 Field("b", "bool"),
             ),
             subheaders=(
-                DataDescriptionSubheaderCount("COUNT", 1),
-                DataDescriptionSubheaderOrder("ORDER", "a:desc"),
+                SubheaderCount("COUNT", 1),
+                SubheaderOrder("ORDER", "a:desc"),
             ),
             meta="meta1"
         )
 
-        dd_expected = DataDescription(
+        dd_expected = Header(
             fields=(
                 Field("a", "str"),
                 Field("b", "float"),
             ),
             subheaders=(
-                DataDescriptionSubheaderCount("COUNT", 2),
+                SubheaderCount("COUNT", 2),
             ),
         )
-        self.assertEqual(DataDescription.merge(dd1, dd2), dd_expected)
+        self.assertEqual(Header.merge(dd1, dd2), dd_expected)

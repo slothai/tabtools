@@ -1,19 +1,17 @@
 """ Base package classes."""
 from .utils import Choices, Proxy, ProxyMeta
 import itertools
+from enum import Enum
 
 
-class Field(object):
+class Field:
 
-    """ Field description."""
+    """Field description."""
 
-    TYPES = Choices(
-        ("bool", "BOOL"),
-        ("int", "INT"),
-        ("float", "FLOAT"),
-        ("str", "STR"),
-        ("null", "NULL"),
-    )
+    class TYPES(Enum):
+        STRING = 'str'
+        NUMBER = 'num'
+
 
     def __init__(self, title, _type=None):
         if not title:
@@ -22,21 +20,26 @@ class Field(object):
         if " " in title:
             raise ValueError("field could not have spaces: {}".format(title))
 
-        if _type is not None and _type not in self.TYPES:
-            raise ValueError("Unknown type {}".format(_type))
-
         self.title = title
-        self.type = _type or self.TYPES.NULL
+
+        if _type is not None:
+            try:
+                self.type = Field.TYPES(_type)
+            except ValueError:
+                raise ValueError("Unknown type {}".format(_type))
+        else:
+            self.type = None
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and \
-            self.title == other.title and self.type == other.type
+        return isinstance(other, Field) and \
+            self.title == other.title and \
+            self.type == other.type
 
     def __str__(self):
-        if self.type == self.TYPES.NULL:
+        if self.type is None:
             return self.title
         else:
-            return "{}:{}".format(self.title, self.type)
+            return "{}:{}".format(self.title, self.type.value)
 
     def __repr__(self):
         return "<{} ({})>".format(self.__class__.__name__, str(self))
@@ -51,40 +54,44 @@ class Field(object):
         if field.endswith(":"):
             raise ValueError("field does not have a type: {}".format(field))
 
-        return Field(*field.split(":"))
+        return Field(*field.split(":", 1))
 
     @classmethod
-    def combine_types(cls, *types):
-        """Deduce result type from a list of types.
+    def union(cls, *fields):
+        """Combine multiple headers into one.
 
-        :param tuple(str): field types.
-        :return: str
+        This operation mimics SQL union:
+          * if fields have different names, pick the first one.
+          * If fields have different types, deduce the result type.
 
-        """
-        ordered_types = [t[0] for t in cls.TYPES]
-        result = ordered_types[max(ordered_types.index(t) for t in types)]
-        return result
+        Args:
+          fiels
 
-    @classmethod
-    def merge(cls, *fields):
-        """Merge fields and handle the result type.
+        Returns:
+          Field
 
-        This operation works as SQL union: if field names are different, pick
-        the first one. If types are different, deduce a result type.
-
-        :param tuple(Field): fields
-        :return Field:
-        :return ValueError:
+        Raises:
+          ValueError
 
         """
         if not fields:
             raise ValueError("At least one field is required")
 
-        result_type = cls.combine_types(*[f.type for f in fields])
-        return Field(fields[0].title, result_type)
+        types = {f.type for f in fields}
+
+        if None in types:
+            _type = None
+        elif len(types) == 1:
+            _type = list(types)[0]
+        elif Field.TYPES.STRING in types:
+            _type = Field.TYPES.STRING
+        else:
+            _type = None
+
+        return Field(fields[0].title, _type)
 
 
-class OrderedField(object):
+class OrderedField:
 
     """ Ordered field."""
 
@@ -180,7 +187,7 @@ class OrderedField(object):
         return OrderedField(*args)
 
 
-class DataDescriptionSubheader(Proxy, metaclass=ProxyMeta):
+class Subheader(Proxy, metaclass=ProxyMeta):
 
     """ Subheader of file."""
 
@@ -236,7 +243,7 @@ class DataDescriptionSubheader(Proxy, metaclass=ProxyMeta):
         return DataDescriptionSubheader(subheaders[0].key, "")
 
 
-class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
+class SubheaderOrder(Subheader):
 
     """ Subheader for fields order information."""
 
@@ -248,7 +255,7 @@ class DataDescriptionSubheaderOrder(DataDescriptionSubheader):
         ]
 
 
-class DataDescriptionSubheaderCount(DataDescriptionSubheader):
+class SubheaderCount(Subheader):
 
     """ Subheader for file size information."""
 
@@ -270,129 +277,92 @@ class DataDescriptionSubheaderCount(DataDescriptionSubheader):
         return subheader
 
 
-class DataDescription(object):
+class Header:
 
-    """ Data description, taken from header.
+    """Data description based on the header
 
     Data header has following format:
 
-    ^# (<FIELD>(\t<FIELD>)*)?(<SUBHEADER>)*(<META>)?
+    ^(<FIELD>(\t<FIELD>)*)?(<SUBHEADER>)*(<META>)?
 
     FIELD = ^<str>field_title(:<str>field_type)?$
     SUBHEADER = ^ #<subheader_key>: <subheader_value>$
     SUBHEADER:COUNT, value = size of document
     SUBHEADER:ORDER, value = <ORDERED_FIELD>( <ORDERED_FIELD>)*
     ORDERED_FIELD = ^<str>field_title(:sort_order)?(:sort_type)?$
-    META = ^( )*#META: [^n]*
 
     """
 
-    DELIMITER = "\t"
-    PREFIX = "# "
     SUBHEADER_PREFIX = " #"
 
-    def __init__(self, fields=None, subheaders=None, meta=None):
+    def __init__(self, delimiter='\t', fields=None, subheaders=None):
+        self.delimiter = delimiter
         self.fields = tuple(fields or ())
         self.subheaders = tuple(subheaders or ())
-        self.meta = meta
 
     def __str__(self):
-        subheaders = list(self.subheaders)
-        if self.meta is not None:
-            subheaders.append(self.meta)
-
-        return self.PREFIX + "".join(
-            [self.DELIMITER.join(map(str, self.fields))] +
-            list(map(lambda s: self.SUBHEADER_PREFIX + str(s), subheaders))
-        )
+        return self.delimiter.join(map(str, self.fields)) +\
+            "".join([
+                self.SUBHEADER_PREFIX + subheader
+                for subheader in self.subheaders
+            ])
 
     def __repr__(self):
-        return "<{}:\nFields: {}\nSubheaders: {}\nMeta: {}\n>".format(
+        return "<{}:\nDelimited: {}\nFields: {}\nSubheaders: {}\n>".format(
             self.__class__.__name__,
+            repr(self.delimiter),
             repr(self.fields),
-            repr(self.subheaders),
-            repr(self.meta)
+            repr(self.subheaders)
         )
 
     def __eq__(self, other):
-        return isinstance(other, self.__class__) and \
+        return isinstance(other, Header) and \
+            self.delimiter == other.delimiter and \
             self.fields == other.fields and \
-            set(self.subheaders) == set(other.subheaders) and \
-            self.meta == other.meta
-
-    @classmethod
-    def generate_header(cls, line):
-        return "# " + cls.DELIMITER.join(
-            "f{}".format(i) for i, f in enumerate(line.split(cls.DELIMITER))
-        )
+            set(self.subheaders) == set(other.subheaders)
 
     @classmethod
     def parse(cls, header, delimiter=None):
-        """ Parse string into DataDescription object.
+        """Parse string into Header object.
 
         :return DataDescription:
 
         """
-        if not header.startswith(cls.PREFIX):
-            raise ValueError(
-                "Header '{}' should start with {}".format(header, cls.PREFIX))
-
-        fields_subheaders_and_meta = header[len(cls.PREFIX):].split(
-            "#META: ", 1)
-        fields_subheaders = fields_subheaders_and_meta[0]
-        meta = None if len(fields_subheaders_and_meta) == 1 else \
-            DataDescriptionSubheader("META", fields_subheaders_and_meta[1])
-
-        fields_and_subheaders = fields_subheaders.rstrip().split(
-            cls.SUBHEADER_PREFIX)
+        fields_subheaders = header.rstrip().split(cls.SUBHEADER_PREFIX)
 
         fields = tuple(
             Field.parse(f) for f in
-            fields_and_subheaders[0].split(cls.DELIMITER) if f
+            fields_subheaders[0].split(delimiter)
         )
 
-        subheaders = [
-            DataDescriptionSubheader.parse(s).proxy
-            for s in fields_and_subheaders[1:]
-        ]
+        subheaders = [Subheader.parse(s).proxy for s in fields_subheaders[1:]]
         for s in subheaders:
             s.__init__(s.key, s.value)
 
-        fields_set = {f.title for f in fields}
-        ordered_fields_set = {
-            f.title for s in subheaders
-            if isinstance(s, DataDescriptionSubheaderOrder)
-            for f in s.ordered_fields
-        }
-        if not ordered_fields_set <= fields_set:
-            raise ValueError(
-                "Ordered fields {} should be subset of fields {}".format(
-                    ordered_fields_set, fields_set))
-
-        return DataDescription(fields=fields, subheaders=subheaders, meta=meta)
+        return Header(fields=fields, subheaders=subheaders)
 
     @classmethod
-    def merge(cls, *dds):
+    def merge(cls, *headers):
         """ Merge Data Descriptions.
 
         Fields should be in the same order, number of fields should be equal
 
-        :param tuple(DataDescription): dds
+        :param tuple(DataDescription): headers
         :return DataDescription:
         :return ValueError:
 
         """
         # self.subheaders = tuple(subheaders or ())
         fields = tuple(
-            Field.merge(*fields) for fields in
-            itertools.zip_longest(*(dd.fields for dd in dds))
+            Field.merge(*fields)
+            for fields in zip(header.fields for header in headers)
         )
         key = lambda x: x.key
-        subheaders = [
-            DataDescriptionSubheader(k, "").proxy.merge(*list(v))
-            for k, v in itertools.groupby(
-                sorted((x for dd in dds for x in dd.subheaders), key=key), key
-            )
-        ]
-        subheaders = tuple(x for x in subheaders if x.value)
-        return DataDescription(fields=fields, subheaders=subheaders)
+        # subheaders = [
+        #     DataDescriptionSubheader(k, "").proxy.merge(*list(v))
+        #     for k, v in itertools.groupby(
+        #         sorted((x for dd in dds for x in dd.subheaders), key=key), key
+        #     )
+        # ]
+        # subheaders = tuple(x for x in subheaders if x.value)
+        return Header(fields=fields, subheaders=None)
