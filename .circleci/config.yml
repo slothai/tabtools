@@ -5,6 +5,7 @@ workflows:
   main:
     jobs:
       - test
+      - build
 
 jobs:
   test:
@@ -18,3 +19,14 @@ jobs:
       - python/save-cache
       - python/test:
           pytest: true
+  build:
+    docker:
+      - image: alpine
+    working_directory: /tmp
+    steps:
+      - run:
+          name: Build project scripts
+          command: |
+            bash build.sh
+      - store_artifacts:
+          path: /tmp/dist
