@@ -1,12 +1,13 @@
-""" Files and streams utility."""
+"""File list abstraction module."""
 import os
-import sys
 import subprocess
-from .base import DataDescription
+import sys
+
+from .base import Header
 from .utils import cached_property
 
 
-class File(object):
+class File:
 
     """ File base class."""
 
@@ -28,7 +29,7 @@ class File(object):
             return False
 
         try:
-            DataDescription.parse(self._first_line)
+            Header.parse(self._first_line)
             return True
         except ValueError:
             return False
@@ -41,7 +42,7 @@ class File(object):
 
     @property
     def autoheader(self):
-        return DataDescription.generate_header(self._first_data_line)
+        return Header.generate_header(self._first_data_line)
 
     @property
     def proxy(self):
@@ -141,7 +142,7 @@ class FileList(list):
         files = files or [sys.stdin]
         super(FileList, self).__init__([File(f).proxy for f in files])
         self._header = header
-        self.should_generate_header = should_generate_header or False
+        self.should_generate_header = should_generate_header
 
     @property
     def body_descriptors(self):
@@ -157,18 +158,18 @@ class FileList(list):
 
         Return
         ------
-        DataDescription
+        Header
 
         """
         if self._header:
-            return DataDescription.parse(self._header)
+            return Header.parse(self._header)
         else:
             headers = [
                 f.autoheader if self.should_generate_header else f.header
                 for f in self
             ]
-            return DataDescription.merge(*[
-                DataDescription.parse(header) for header in headers
+            return Header.union(*[
+                Header.parse(header) for header in headers
             ])
 
     @property
