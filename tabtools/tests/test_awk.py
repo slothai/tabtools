@@ -1,11 +1,7 @@
 import unittest
-from testfixtures import compare
-try:
-    from unittest.mock import patch
-    from io import StringIO
-except ImportError:
-    from mock import patch
-    from StringIO import StringIO
+
+from unittest.mock import patch
+from io import StringIO
 
 
 from ..awk import Expression, StreamExpression, AWKBaseProgram

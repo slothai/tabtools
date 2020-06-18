@@ -22,7 +22,7 @@ import time
 from enum import Enum
 
 
-class AWKBaseProgram(object):
+class AWKBaseProgram:
 
     """ AWK program generator."""
 
