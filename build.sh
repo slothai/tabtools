@@ -1,9 +1,9 @@
-# Build individual executable, self contained files to dist folder.
-# Build in the following order: __init__, six, utils, base, files, awk, scripts.
+# Build individual executables (self contained files).
+# Build in the following order: __init__, utils, base, files, awk, scripts.
 # This allows copying of scripts directly to user's ~/bin/ even if only internal
 # network access is allowed and user does not have administrator's privileges.
-PACKAGE_PATH="./tabtools"
-BUILD_PATH="./dist"
+PACKAGE_PATH=$(pwd)"/tabtools"
+BUILD_PATH=$(pwd)"/dist"
 
 function build_script {
     SCRIPT_FILENAME=$BUILD_PATH/t$1  # add prefir 't' to the function name
@@ -17,33 +17,18 @@ function build_script {
     # Prefix every line in LICENSE with "# "
     cat LICENSE | sed "s/^/# /" >> $SCRIPT_FILENAME
 
-    echo -e "\n#####\n# __init__.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/__init__.py >> $SCRIPT_FILENAME
-
-    echo -e "\n#####\n# utils.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/utils.py >> $SCRIPT_FILENAME
-
-    echo -e "\n#####\n# base.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/base.py \
-        | grep -vE '^from .utils import' \
-        | grep -vE '^from .six import' >> $SCRIPT_FILENAME
-
-    echo -e "\n#####\n# files.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/files.py \
-        | grep -vE '^from .base import' \
-        | grep -vE '^from .utils import' >> $SCRIPT_FILENAME
-
-    echo -e "\n#####\n# awk.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/awk.py \
-        | grep -vE '^from .utils import' >> $SCRIPT_FILENAME
-
-    echo -e "\n#####\n# scripts.py module\n#####" >> $SCRIPT_FILENAME
-    cat $PACKAGE_PATH/scripts.py \
-        | grep -vE '^from tabtools import' \
-        | grep -vE '^from .six import' \
-        | grep -vE '^from .base import' \
-        | grep -vE '^from .files import' \
-        | grep -vE '^from .awk import' >> $SCRIPT_FILENAME
+    # Loop over modules and concatenate their content.
+    # Remove relative imports as they would be available after concatenation.
+    for module in '__init__.py' 'utils.py' 'base.py' 'files.py' 'awk.py' 'scripts.py'
+    do
+        echo -e "\n#####\n# $module module\n#####" >> $SCRIPT_FILENAME
+        cat $PACKAGE_PATH/$module \
+            | grep -vE '^from tabtools import' \
+            | grep -vE '^from .base import' \
+            | grep -vE '^from .utils import' \
+            | grep -vE '^from .files import' \
+            | grep -vE '^from .awk import' >> $SCRIPT_FILENAME
+    done
 
     echo -e "\n\nif __name__ == \"__main__\":\n    "$1"()" >> $SCRIPT_FILENAME
     chmod +x $SCRIPT_FILENAME
