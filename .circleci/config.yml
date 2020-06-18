@@ -22,7 +22,6 @@ jobs:
   build:
     docker:
       - image: alpine
-    working_directory: /tmp
     steps:
       - checkout
       - run:
