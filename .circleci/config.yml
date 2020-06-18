@@ -24,9 +24,10 @@ jobs:
       - image: alpine
     working_directory: /tmp
     steps:
+      - checkout
       - run:
           name: Build project scripts
           command: |
-            bash build.sh
+            sh build.sh
       - store_artifacts:
           path: /tmp/dist

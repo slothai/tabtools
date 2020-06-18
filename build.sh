@@ -5,7 +5,7 @@
 PACKAGE_PATH=$(pwd)"/tabtools"
 BUILD_PATH=$(pwd)"/dist"
 
-function build_script {
+build_script() {
     SCRIPT_FILENAME=$BUILD_PATH/t$1  # add prefir 't' to the function name
     mkdir -p $BUILD_PATH
 
