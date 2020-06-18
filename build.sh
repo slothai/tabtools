@@ -12,7 +12,9 @@ build_script() {
     echo "#!/usr/bin/env python3" > $SCRIPT_FILENAME
 
     printf '# VERSION: ' >> $SCRIPT_FILENAME
-    python -c 'from tabtools import __version__; print(__version__)' >> $SCRIPT_FILENAME
+    # Original line to extract the version was rewritten without usage of python to run on bare VM (alpine)
+    # python -c 'from tabtools import __version__; print(__version__)' >> $SCRIPT_FILENAME
+    grep -o "[0-9]\+,\s\+[0-9]\+,\s\+[0-9]\+" tabtools/__init__.py | sed 's/\,\s\+/\./g' >> $SCRIPT_FILENAME
 
     # Prefix every line in LICENSE with "# "
     cat LICENSE | sed "s/^/# /" >> $SCRIPT_FILENAME
