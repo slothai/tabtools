@@ -19,17 +19,15 @@ implementation for Linux, original AWK was written for Unix v7.
 import ast
 import copy
 import time
-
-from .utils import Choices
+from enum import Enum
 
 
 class AWKBaseProgram(object):
 
     """ AWK program generator."""
 
-    MODULES = Choices(
-        ("dequeue", "DEQUE"),
-    )
+    class MODULES(Enum):
+        DEQUE = 1
 
     def __str__(self):
         result = "'\n"
@@ -57,7 +55,7 @@ class AWKBaseProgram(object):
         Iterate over all of the expressions and collect modules from them.
 
         """
-        modules = set([])
+        modules = set()
         for expression in self.output:
             modules |= expression.modules
 
@@ -70,8 +68,8 @@ class AWKBaseProgram(object):
             for module in modules])
 
     @property
-    def module_dequeue(self):
-        """ Deque realizsation in awk."""
+    def module_deque(self):
+        """Deque implementation in awk."""
         return "\n".join([
             '# awk module degue',
             'function deque_init(d) {d["+"] = d["-"] = 0}',

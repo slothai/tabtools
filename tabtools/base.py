@@ -1,7 +1,8 @@
 """ Base package classes."""
-from .utils import Choices, Proxy, ProxyMeta
 import itertools
 from enum import Enum
+
+from .utils import Proxy, ProxyMeta
 
 
 class Field:
