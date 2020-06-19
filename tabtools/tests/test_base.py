@@ -185,6 +185,9 @@ class TestHeader:
         header2.subheaders=self.subheaders[1:] + self.subheaders[0:1]
         assert header1 == header2
 
+    def test_generate(self):
+        assert "f0,f1,f2" == str(Header.generate(',', 3))
+
     def test_parse(self):
         assert Header.parse("a:num\tb:str\tc #COUNT:1 #ORDER:a:asc") == Header(
             delimiter='\t',

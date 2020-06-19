@@ -215,6 +215,13 @@ class Header:
             self.fields == other.fields and \
             set(self.subheaders) == set(other.subheaders)
 
+    @staticmethod
+    def generate(delimiter, num_columns):
+        return Header(
+            delimiter=delimiter,
+            fields=[Field("f" + str(i)) for i in range(num_columns)]
+        )
+
     @classmethod
     def parse(cls, header, delimiter=None):
         """Parse string into Header object.
