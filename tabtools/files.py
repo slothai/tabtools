@@ -9,9 +9,15 @@ from .utils import cached_property
 
 class File:
 
-    """ File base class."""
+    """File base class.
 
-    def __init__(self, fd):
+    Attributes:
+    fd - file descriptor
+    has_header (bool=True) whether file has header or not.
+
+    """
+
+    def __init__(self, fd, has_header):
         """ Init fie object.
 
         :param fd: file descriptor
@@ -19,30 +25,24 @@ class File:
 
         """
         self.fd = fd
-
-    def readline(self):
-        raise NotImplementedError("Implement this method in derided class")
-
-    @property
-    def has_header(self):
-        if self._first_line is None:
-            return False
-
-        try:
-            Header.parse(self._first_line)
-            return True
-        except ValueError:
-            return False
+        self.has_header = has_header
 
     @property
     def header(self):
-        if not self.has_header:
-            raise ValueError("File {} does not have header.".format(self.fd))
-        return self._first_line
+        if self.header_line is None:
+            raise ValueError("Header line is not defined")
+        return Header.parse(self.header_line)
 
-    @property
-    def autoheader(self):
-        return Header.generate_header(self._first_data_line)
+    def generate_header(self):
+        """Generate header based on the data line.
+
+        As delimiter and and number of columns are not known, parse the first
+        data line as if it is header and determine unknown parameters.
+
+        Return: Header
+        """
+        header = Header.parse(self.first_data_line)
+        return Header.generate(header.delimiter, len(header.fields))
 
     @property
     def proxy(self):
@@ -50,12 +50,49 @@ class File:
         try:
             self.fd.tell()
         except IOError:
-            return StreamFile(self.fd)
+            return StreamFile(self.fd, self.has_header)
         except ValueError:
             # Operation on closed descriptor
             return None
         else:
-            return RegularFile(self.fd)
+            return RegularFile(self.fd, self.has_header)
+
+
+class RegularFile(File):
+
+    """ Regular file according to file types.
+
+    http://en.wikipedia.org/wiki/Unix_file_types
+
+    """
+
+    def __init__(self, fd, has_header):
+        super(RegularFile, self).__init__(fd, has_header)
+
+        if has_header:
+            self.header_line = self.readline()
+        else:
+            self.first_data_line = self.readline()
+
+    def readline(self):
+        """ Return regular file header."""
+        with open(self.fd.name) as f:
+            line = f.readline()
+        return line
+
+    @property
+    def body_descriptor(self):
+        """ Return regular file descriptor.
+
+        Regular file has header, descriptor consists of lines starting
+        from second.
+
+        """
+        os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
+        if self.has_header:
+            return "<( tail -qn+2 {} )".format(self.fd)
+        else:
+            return self.fd
 
 
 class StreamFile(File):
@@ -65,11 +102,14 @@ class StreamFile(File):
     .. note: StreamFile could be read only once, seek is not allowed.
 
     """
-    def __init__(self, fd):
-        super(StreamFile, self).__init__(fd)
-        self._first_line = self.readline()
-        self._first_data_line = self.readline() if self.has_header \
-            else self._first_line
+
+    def __init__(self, fd, has_header):
+        super(StreamFile, self).__init__(fd, has_header)
+
+        if has_header:
+            self.header_line = self.readline()
+        else:
+            self.first_data_line = self.readline()
 
     def readline(self):
         """Read one line and return it."""
@@ -95,48 +135,20 @@ class StreamFile(File):
         # rest of the stream into one stream.
         # https://unix.stackexchange.com/questions/64736/
         #   combine-output-from-two-commands-in-bash
-        descriptor = "<(cat <(echo \"{}\") <(cat /dev/fd/{}))".format(
-            self._first_data_line, self.fd.fileno())
-        return descriptor
-
-
-class RegularFile(File):
-
-    """ Regular file according to file types.
-
-    http://en.wikipedia.org/wiki/Unix_file_types
-
-    """
-    def __init__(self, fd):
-        super(RegularFile, self).__init__(fd)
-        self._first_line = self.readline()
-        self._first_data_line = self.readline() if self.has_header \
-            else self._first_line
-
-    def readline(self):
-        """ Return regular file header."""
-        with open(self.fd.name) as f:
-            line = f.readline()
-        return line
-
-    @property
-    def body_descriptor(self):
-        """ Return regular file descriptor.
-
-        Regular file has header, descriptor consists of lines starting
-        from second.
-
-        """
-        os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
         if self.has_header:
-            return "<( tail -qn+2 {} )".format(self.fd)
+            return self.fd.fileno()
         else:
-            return self.fd
+            return "<(cat <(echo \"{}\") <(cat /dev/fd/{}))".format(
+                self.first_data_line, self.fd.fileno())
 
 
 class FileList(list):
 
-    """ List of Files."""
+    """A List of Files.
+
+    header should be an instance of a Header class.
+
+    """
 
     def __init__(self, files=None, header=None, should_generate_header=None):
         files = files or [sys.stdin]

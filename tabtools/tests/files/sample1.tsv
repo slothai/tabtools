@@ -1,4 +1,4 @@
-# id	name	value	date #COUNT: 3 #ORDER: id:asc
+id	name	value	date #COUNT: 3 #ORDER: id:asc
 1	Alex	2	2000-01-01
 2	Kate	3	2000-01-02
 3	Jack	0	2000-01-03
