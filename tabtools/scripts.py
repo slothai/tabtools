@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """ Scripts of tool."""
 import argparse
 import os
@@ -49,15 +50,16 @@ def cat():
     add_common_arguments(parser)
 
     args = parser.parse_args()
-    kwargs = {}
-    if args.header is not None and len(args.header) > 0:
-        kwargs["header"] = args.header
-    if args.header is None:
-        kwargs["should_generate_header"] = True
-    files = FileList(args.files, **kwargs)
+    # kwargs = {}
+    # if args.header is None:
+    #     kwargs["should_generate_header"] = True
+    # else if len(args.header) > 0:
+    #     kwargs["header"] = args.header
+
+    files = FileList(args.files, header_line=args.header)
 
     if not args.no_header:
-        sys.stdout.write(files.header + '\n')
+        sys.stdout.write(str(files.header) + '\n')
         sys.stdout.flush()
 
     files("cat")

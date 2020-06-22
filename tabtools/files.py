@@ -1,5 +1,6 @@
 """File list abstraction module."""
 import os
+from pipes import quote
 import subprocess
 import sys
 
@@ -90,9 +91,9 @@ class RegularFile(File):
         """
         os.lseek(self.fd.fileno(), 0, os.SEEK_SET)
         if self.has_header:
-            return "<( tail -qn+2 {} )".format(self.fd)
+            return "<(tail -qn+2 {})".format(self.fd.name)
         else:
-            return self.fd
+            return self.fd.name
 
 
 class StreamFile(File):
@@ -136,7 +137,7 @@ class StreamFile(File):
         # https://unix.stackexchange.com/questions/64736/
         #   combine-output-from-two-commands-in-bash
         if self.has_header:
-            return self.fd.fileno()
+            return '/dev/fd/' + str(self.fd.fileno())
         else:
             return "<(cat <(echo \"{}\") <(cat /dev/fd/{}))".format(
                 self.first_data_line, self.fd.fileno())
@@ -146,43 +147,24 @@ class FileList(list):
 
     """A List of Files.
 
+    header_line =
+        None - generate header, files do not have headers.
+        '' - get from files, assume each file has a header
+        <str> - use passed header, files should not have headers
     header should be an instance of a Header class.
 
     """
 
-    def __init__(self, files=None, header=None, should_generate_header=None):
+    def __init__(self, files=None, header_line=''):
         files = files or [sys.stdin]
-        super(FileList, self).__init__([File(f).proxy for f in files])
-        self._header = header
-        self.should_generate_header = should_generate_header
+        has_header = (header_line == '')
+        super(FileList, self).__init__([File(f, has_header).proxy for f in files])
+        self.header_line = header_line
 
     @property
     def body_descriptors(self):
         """ Return list of file descriptors."""
         return [f.body_descriptor for f in self]
-
-    @cached_property
-    def description(self):
-        """ Get data description.
-
-        .. note: cache property to allow multiple header access in case of
-        stream files.
-
-        Return
-        ------
-        Header
-
-        """
-        if self._header:
-            return Header.parse(self._header)
-        else:
-            headers = [
-                f.autoheader if self.should_generate_header else f.header
-                for f in self
-            ]
-            return Header.union(*[
-                Header.parse(header) for header in headers
-            ])
 
     @property
     def header(self):
@@ -192,13 +174,26 @@ class FileList(list):
         :raise ValueError:
 
         """
-        return str(self.description)
+        if self.header_line is None:
+            # generate header
+            return Header.union(*[
+                f.generate_header() for f in self
+            ])
+
+        if self.header_line == '':
+            # use header from files
+            return Header.union(*[
+                f.header for f in self
+            ])
+
+        # use provided header
+        return Header.parse(self.header_line)
 
     def __call__(self, *args, **kwargs):
         command = [
-            'bash', '-o', 'pipefail', '-o', 'errexit', '-c',
+            '/bin/bash', '-o', 'pipefail', '-o', 'errexit', '-c',
         ]
-        args = list(args)
+        args = list(map(quote, args))
         subcommand = " ".join(
             ['LC_ALL=C', args.pop(0)] + args + self.body_descriptors
         )
