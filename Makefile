@@ -9,11 +9,8 @@ help:
 .PHONY: clean
 # target: clean - Remove temporary files
 clean:
-	@rm -rf build pydist docs/_build
+	@rm -rf build pydist docs/_build ./dist
 	@rm -f *.py[co]
-	@rm -f *.orig
-	@rm -f *.prof
-	@rm -f *.lprof
 	@rm -f *.so
 	@rm -f */*.py[co]
 	@rm -f */*.orig
@@ -42,5 +39,5 @@ lint:
 
 .PHONY: build
 # target: build - build self-executable tabtools scripts
-build:
+build: clean
 	bash build.sh
