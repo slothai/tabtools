@@ -50,12 +50,6 @@ def cat():
     add_common_arguments(parser)
 
     args = parser.parse_args()
-    # kwargs = {}
-    # if args.header is None:
-    #     kwargs["should_generate_header"] = True
-    # else if len(args.header) > 0:
-    #     kwargs["header"] = args.header
-
     files = FileList(args.files, header_line=args.header)
 
     if not args.no_header:
@@ -76,12 +70,7 @@ def tail():
     add_common_arguments(parser)
 
     args = parser.parse_args()
-    kwargs = {}
-    if args.header is not None and len(args.header) > 0:
-        kwargs["header"] = args.header
-    if args.header is None:
-        kwargs["should_generate_header"] = True
-    files = FileList(args.files, **kwargs)
+    files = FileList(args.files, header_line=args.header)
 
     if not args.no_header:
         sys.stdout.write(files.header + '\n')
@@ -91,7 +80,7 @@ def tail():
     files(command)
 
 
-def srt():
+def sort():
     """ sort function.
 
     tsrt -k field1 -k field2 file1
@@ -107,23 +96,18 @@ def srt():
     add_common_arguments(parser)
 
     args = parser.parse_args()
-    kwargs = {}
-    if args.header is not None and len(args.header) > 0:
-        kwargs["header"] = args.header
-    if args.header is None:
-        kwargs["should_generate_header"] = True
-    files = FileList(args.files, **kwargs)
+    files = FileList(args.files, header_line=args.header)
 
-    fields = [f.title for f in files.description.fields]
-    order = [OrderedField.parse(key) for key in args.keys]
+
+    fields = [f.title for f in files.header.fields]
     options = [
-        "-k{0},{0}{1}{2}".format(
-            fields.index(f.title) + 1, f.sort_type, f.sort_order)
-        for f in order
+        '--field-separator=' + str(files.header.delimiter),
+    ] + [
+        '-k{0},{0}'.format(fields.index(key) + 1) for key in args.keys
     ]
 
     if not args.no_header:
-        sys.stdout.write(files.header + '\n')
+        sys.stdout.write(str(files.header) + '\n')
         sys.stdout.flush()
 
     files("sort", *options)
