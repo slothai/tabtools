@@ -2,6 +2,7 @@
 """ Scripts of tool."""
 import argparse
 import os
+from pipes import quote
 import re
 import subprocess
 import sys
@@ -37,7 +38,7 @@ def add_common_arguments(parser):
     return parser
 
 
-def cat():
+def ttcat():
     """ cat function.
 
     tact file1, file2
@@ -59,7 +60,7 @@ def cat():
     files("cat")
 
 
-def tail():
+def tttail():
     parser = argparse.ArgumentParser(
         add_help=True,
         description="Tail files and print on the standard output"
@@ -80,7 +81,7 @@ def tail():
     files(command)
 
 
-def sort():
+def ttsort():
     """ sort function.
 
     tsrt -k field1 -k field2 file1
@@ -113,7 +114,7 @@ def sort():
     files("sort", *options)
 
 
-def awk():
+def ttmap():
     parser = argparse.ArgumentParser(
         add_help=True,
         description="Perform a map operation on all FILE(s)"
@@ -122,44 +123,53 @@ def awk():
         "To use specific AWK interpreter set AWKPATH environment variable:"
         "export AWKPATH=$(which mawk)".format(AWK_INTERPRETER)
     )
-    add_common_arguments(parser)
     parser.add_argument('-a', '--all-columns', action='store_true',
                         default=False,
                         help="Output all of the original columns first")
     # FIXME: does MUTABLE default=[] value affect the execution?
-    parser.add_argument('-o', '--output', action="append",
+    parser.add_argument('-s', '--select', action="append",
                         help="Output fields", default=[])
-    parser.add_argument('-f', '--filter', action="append", default=[],
+    parser.add_argument('-w', '--where', action="append", default=[],
                         help="Filter expression")
     parser.add_argument('-v', '--variables', action="append", default=[],
                         help="Assigns value to program variable var")
     parser.add_argument('--debug', action='store_true', default=False,
                         help="Print result program")
+    add_common_arguments(parser)
+
     args = parser.parse_args()
-    files = FileList(args.files)
+    files = FileList(args.files, header_line=args.header)
+
+    select = args.select or ['*']
+    if '*' in select:
+        i = select.index('*')
+        select = select[:i] + [f.title for f in files.header.fields] + select[i + 1:]
+
     program = AWKStreamProgram(
-        files.description.fields,
-        filter_expressions=args.filter,
-        output_expressions=([
-            f.title for f in files.description.fields
-        ] if args.all_columns else []) + args.output
+        files.header.fields,
+        filter_expressions=args.where,
+        output_expressions=select
     )
 
     if args.debug:
         sys.stdout.write("%s\n" % program)
 
-    description = DataDescription([
-        Field(o.title, o._type) for o in program.output
-        if o.title and not o.title.startswith('_')
-    ])
+    header = Header(
+        delimiter=files.header.delimiter,
+        fields=[
+            Field(o.title, o._type) for o in program.output
+            if o.title and not o.title.startswith('_')
+        ]
+    )
+
     if not args.no_header:
-        sys.stdout.write(str(description) + '\n')
+        sys.stdout.write(str(header) + '\n')
         sys.stdout.flush()
 
-    files(AWK_INTERPRETER, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+    files(AWK_INTERPRETER, '-F', quote(header.delimiter), '-v', 'OFS=' + quote(header.delimiter), str(program))
 
 
-def grp():
+def ttreduce():
     parser = argparse.ArgumentParser(
         add_help=True,
         description="Perform a group operation on all FILE(s)"
@@ -169,8 +179,8 @@ def grp():
         "export AWKPATH=$(which mawk).".format(AWK_INTERPRETER)
     )
     add_common_arguments(parser)
-    parser.add_argument('-k', '--groupkey', help="Group expression")
-    parser.add_argument('-g', '--groupexpressions', action="append",
+    parser.add_argument('-g', '--groupby', help="Group expression")
+    parser.add_argument('-s', '--select', action="append",
                         default=[], help="Group expression")
     parser.add_argument('--debug', action='store_true', default=False,
                         help="Print result program")
@@ -178,27 +188,30 @@ def grp():
     files = FileList(args.files)
 
     program = AWKGroupProgram(
-        files.description.fields,
-        group_key=args.groupkey,
-        group_expressions=args.groupexpressions
+        files.header.fields,
+        group_key=args.groupby,
+        group_expressions=args.select
     )
 
     if args.debug:
         sys.stdout.write("%s\n" % program)
 
-    description = DataDescription([
-        Field(o.title, o._type) for o in program.key + program.output
-        if o.title and not o.title.startswith('_')
-    ])
+    header = Header(
+        delimiter=files.header.delimiter,
+        fields=[
+            Field(o.title, o._type) for o in program.key + program.output
+            if o.title and not o.title.startswith('_')
+        ]
+    )
 
     if not args.no_header:
-        sys.stdout.write(str(description) + '\n')
+        sys.stdout.write(str(header) + '\n')
         sys.stdout.flush()
 
-    files(AWK_INTERPRETER, '-F', '"\t"', '-v', 'OFS="\t"', str(program))
+    files(AWK_INTERPRETER, '-F', quote(header.delimiter), '-v', 'OFS=' + quote(header.delimiter), str(program))
 
 
-def pretty():
+def ttpretty():
     """ Prettify output.
 
     Uses sys.stdin only
@@ -235,7 +248,7 @@ def pretty():
     os.remove(file_name)
 
 
-def plot():
+def ttplot():
     """ Use gnuplot with tab files.
 
     Usage
