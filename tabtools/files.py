@@ -1,6 +1,5 @@
 """File list abstraction module."""
 import os
-from pipes import quote
 import subprocess
 import sys
 
@@ -193,7 +192,7 @@ class FileList(list):
         command = [
             '/bin/bash', '-o', 'pipefail', '-o', 'errexit', '-c',
         ]
-        args = list(map(quote, args))
+        args = list(args)
         subcommand = " ".join(
             ['LC_ALL=C', args.pop(0)] + args + self.body_descriptors
         )
