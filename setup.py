@@ -41,13 +41,13 @@ setup(
     long_description=read('README.rst'),
     entry_points={
         "console_scripts": [
-            'tcat = tabtools.scripts:cat',
-            'ttail = tabtools.scripts:tail',
-            'tsrt = tabtools.scripts:srt',
-            'tawk = tabtools.scripts:awk',
-            'tgrp = tabtools.scripts:grp',
-            'tpretty = tabtools.scripts:pretty',
-            'tplot = tabtools.scripts:plot',
+            'ttcat = tabtools.scripts:ttcat',
+            'tttail = tabtools.scripts:tttail',
+            'ttsort = tabtools.scripts:ttsort',
+            'ttmap = tabtools.scripts:ttmap',
+            'ttreduce = tabtools.scripts:ttreduce',
+            'ttpretty = tabtools.scripts:ttpretty',
+            'ttplot = tabtools.scripts:ttplot',
         ]
     },
     # Full list:

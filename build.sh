@@ -6,7 +6,7 @@ PACKAGE_PATH=$(pwd)"/tabtools"
 BUILD_PATH=$(pwd)"/dist"
 
 build_script() {
-    SCRIPT_FILENAME=$BUILD_PATH/t$1  # add prefir 't' to the function name
+    SCRIPT_FILENAME=$BUILD_PATH/$1  # add prefir 't' to the function name
     mkdir -p $BUILD_PATH
 
     echo "#!/usr/bin/env python3" > $SCRIPT_FILENAME
@@ -36,10 +36,10 @@ build_script() {
     chmod +x $SCRIPT_FILENAME
 }
 
-build_script cat
-build_script tail
-build_script srt
-build_script awk
-build_script grp
-build_script pretty
-build_script plot
+build_script ttcat
+build_script tttail
+build_script ttsort
+build_script ttmap
+build_script ttreduce
+build_script ttpretty
+build_script ttplot
