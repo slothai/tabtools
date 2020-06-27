@@ -1,3 +1,11 @@
+2020-06-27  Kirill Pavlov <k@p99.io>
+
+	* Use "tt" prefix instead of "t" to align script names with correcponding coreutils.
+	* Rename tawk -> ttmap and tgrp -> ttreduce to reflect what these tools are doing.
+	* Refactor file header parsing, allows delimiters other than tab.
+	* Remove "dist/" from the source code. Generate scripts on CI server as artifacts.
+	* Handle SIGPIPE, this fixes "head" usage after tabtools.
+
 2017-10-16  Kirill Pavlov <k@p99.io>
 
 	* Fix file list for stream and regular files.
