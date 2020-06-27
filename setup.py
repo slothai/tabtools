@@ -36,7 +36,7 @@ setup(
     # metadata for upload to PyPI
     author="Kirill Pavlov",
     author_email="k@p99.io",
-    url="https://github.com/pavlov99/tabtools",
+    url="https://github.com/slothai/tabtools",
     description="Tools for tab separated files manipulation in command line",
     long_description=read('README.rst'),
     entry_points={

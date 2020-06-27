@@ -1,8 +1,8 @@
-+--------------+-------------+-----------------+----------+------------------+
-| Build        | Coverage    | Documentation   | PyPI     | Code             |
-+==============+=============+=================+==========+==================+
-| |CircleCI|   | |Coveralls| | |Readthedocs|   | |pypi|   | |Codacy Badge|   |
-+--------------+-------------+-----------------+----------+------------------+
++--------------+-----------------+----------+------------------+
+| Build        | Documentation   | PyPI     | Code             |
++==============+=================+==========+==================+
+| |CircleCI|   | |Readthedocs|   | |pypi|   | |Codacy Badge|   |
++--------------+-----------------+----------+------------------+
 
 Install
 ~~~~~~~
@@ -110,9 +110,8 @@ TODO:
 -  Testing in different python environments:
    https://discuss.circleci.com/t/testing-in-different-environments/450/13
 
-.. |CircleCI| image:: https://circleci.com/gh/pavlov99/tabtools.svg?style=svg
-   :target: https://circleci.com/gh/pavlov99/tabtools
-.. |Coveralls| image:: https://coveralls.io/repos/pavlov99/tabtools/badge.png
+.. |CircleCI| image:: https://circleci.com/gh/slothai/tabtools.svg?style=svg
+   :target: https://circleci.com/gh/slothai/tabtools
 .. |Readthedocs| image:: https://readthedocs.org/projects/tabtools/badge/?version=latest
    :target: http://tabtools.readthedocs.io/en/latest/?badge=latest
 .. |pypi| image:: https://img.shields.io/pypi/v/tabtools.svg
