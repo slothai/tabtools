@@ -36,10 +36,10 @@ build_script() {
     chmod +x $SCRIPT_FILENAME
 }
 
-build_script ttcat
-build_script tttail
-build_script ttsort
 build_script ttmap
 build_script ttreduce
-build_script ttpretty
+build_script ttsort
 build_script ttplot
+
+cp $(pwd)/bin/tttail $BUILD_PATH
+cp $(pwd)/bin/ttpretty $BUILD_PATH
