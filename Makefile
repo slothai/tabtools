@@ -22,22 +22,17 @@ env:
 	@python3 -m venv $(ENV)
 	$(ENV)/bin/pip install -r requirements-dev.txt
 
-.PHONY: upload
-# target: upload - Upload module on PyPi
-upload:
-	@python setup.py sdist --dist-dir pydist bdist_wheel --dist-dir pydist upload || echo 'Upload already'
-
 .PHONY: test
 # target: test - Runs tests
 test: clean
 	$(ENV)/bin/pytest $(CURDIR)/tabtools/tests
 
-.PHONY: lint
-# target: lint - audit code
-lint:
-	@tox -e pylama
-
 .PHONY: build
 # target: build - build self-executable tabtools scripts
 build: clean
-	bash build.sh
+	sh build.sh
+
+.PHONY: upload
+# target: upload - Upload module on PyPi
+upload:
+	@python setup.py sdist --dist-dir pydist bdist_wheel --dist-dir pydist upload || echo 'Upload already'
