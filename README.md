@@ -2,6 +2,7 @@
 
 [![CircleCI Badge](https://circleci.com/gh/slothai/tabtools.svg?style=svg)](https://circleci.com/gh/slothai/tabtools)
 [![PyPi version](https://img.shields.io/pypi/v/tabtools.svg)](https://pypi.org/project/tabtools/)
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com/slothai/tabtools.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com/slothai/tabtools?ref=badge_shield)
 
 
 ### Install
@@ -80,4 +81,5 @@ Date       | Open  | High  | Low   | Close | Volume  | fast_macd | slow_macd | m
 2015-07-15 | 69.0  | 69.45 | 68.7  | 68.55 | 9676.0  | -1.38112  | -1.21731  | -0.163806      | 72.7614
 ```
 
-
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com/slothai/tabtools.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com/slothai/tabtools?ref=badge_large)
