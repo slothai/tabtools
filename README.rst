@@ -1,3 +1,5 @@
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fslothai%2Ftabtools.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Fslothai%2Ftabtools?ref=badge_shield)
+
 +--------------+-----------------+----------+------------------+
 | Build        | Documentation   | PyPI     | Code             |
 +==============+=================+==========+==================+
@@ -118,3 +120,7 @@ TODO:
    :target: https://pypi.org/project/tabtools/
 .. |Codacy Badge| image:: https://api.codacy.com/project/badge/Grade/dab474ce648044979ce47ead7d923250
    :target: https://www.codacy.com/app/pavlov99/tabtools
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Fslothai%2Ftabtools.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Fslothai%2Ftabtools?ref=badge_large)
