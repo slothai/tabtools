@@ -11,7 +11,7 @@ from distutils.spawn import find_executable
 from itertools import zip_longest
 
 from tabtools import __version__
-from .base import OrderedField, DataDescription, Field
+from .base import Header, Field
 from .files import FileList
 from .awk import AWKStreamProgram, AWKGroupProgram
 
