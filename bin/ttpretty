@@ -1,9 +1,9 @@
 tmp=$(mktemp)
 cat > $tmp
 
-COLUMNWIDTHS=$(awk '{for (i=1; i<=NF; i++) if (length($i) > l[i]) l[i] = length($i) } END{for (i=1; i<=NF; i++) printf "%s%s", l[i], i==NF ? "" : OFS}' $tmp)
+COLUMNWIDTHS=$(awk -F'\t' '{for (i=1; i<=NF; i++) if (length($i) > l[i]) l[i] = length($i) } END{for (i=1; i<=NF; i++) printf "%s%s", l[i], i==NF ? "" : OFS}' $tmp)
 
-awk -v COLUMNWIDTHS="${COLUMNWIDTHS}" 'BEGIN{ split(COLUMNWIDTHS, CW, " ") }{
+awk -v COLUMNWIDTHS="${COLUMNWIDTHS}" -F'\t' 'BEGIN{ split(COLUMNWIDTHS, CW, " ") }{
     for (i=1; i<=NF; i++)
         printf "%-*s%s", CW[i], $i, i==NF ? ORS : " | "
 
