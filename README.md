@@ -41,33 +41,34 @@ Convert daily data to weekly:
 ```bash
 
 > head tabtools/tests/files/hsbc-stock.tsv \
-    | tgrp -k 'week=strftime("%U", DateEpoch(Date))' \  # Define aggregation key (map emitter)
-    -g "Date=FIRST(Date); Open=FIRST(Open); High=MAX(High)" \  # Aggregated values to compute
-    -g "Low=MIN(Low); Close=LAST(Close); Volume=SUM(Volume)" \  # Extra aggregated values
-    | tpretty
+    | ttreduce -g 'week=strftime("%U", DateEpoch(Date))' \
+        -s "Date=FIRST(Date); Open=FIRST(Open); High=MAX(High)" \
+        -s "Low=MIN(Low); Close=LAST(Close); Volume=SUM(Volume)" \
+    | ttpretty
 
-    week | Date       | Open  | High  | Low   | Close | Volume
-------+------------+-------+-------+-------+-------+---------
-    07   | 2014-02-21 | 84.35 | 84.45 | 83.9  | 83.45 | 17275.0
-    08   | 2014-02-24 | 83.85 | 84.4  | 81.0  | 81.9  | 91166
-    09   | 2014-03-05 | 81.4  | 81.75 | 81.05 | 81.45 | 30207
+
+week | Date       | Open  | High  | Low   | Close | Volume
+-----|------------|-------|-------|-------|-------|--------
+07   | 2014-02-21 | 84.35 | 84.45 | 83.9  | 83.45 | 17275.0
+08   | 2014-02-24 | 83.85 | 84.4  | 81.0  | 81.9  | 91166
+09   | 2014-03-05 | 81.4  | 81.75 | 81.05 | 81.45 | 30207
 ```
 
-Sort original file, compute 3 different EMA (exponential moving
-average), MACD and simple moving average indicators, select last 10
+Sort original file, compute 3 different EMAs (exponential moving
+averages), MACD and simple moving average indicators, select last 10
 lines and prettify output:
 
 ```bash
 > cat tabtools/tests/files/hsbc-stock.tsv \
-    | tsrt -k Date \  # Sort by column name, not by "field number 1"
-    | tawk -o "Date; Open; High; Low; Close; Volume" \  # output original fields
-        -o "fast_macd = EMA(Close, 12) - EMA(Close, 26); slow_macd = EMA(fast_macd, 9)" \
-        -o "macd_histogram = fast_macd - slow_macd; ma50 = AVG(Close, 50)" \
-    | ttail \
-    | tpretty
+    | ttsort -k Date \
+    | ttmap -s "*" \
+        -s "fast_macd = EMA(Close, 12) - EMA(Close, 26); slow_macd = EMA(fast_macd, 9)" \
+        -s "macd_histogram = fast_macd - slow_macd; ma50 = AVG(Close, 50)" \
+    | tttail \
+    | ttpretty
 
-Date       | Open  | High  | Low   | Close | Volume  | fast_macd | slow_macd | macd_histogram | ma50    
------------+-------+-------+-------+-------+---------+-----------+-----------+----------------+---------
+Date       | Open  | High  | Low   | Close | Volume  | fast_macd | slow_macd | macd_histogram | ma50
+-----------|-------|-------|-------|-------|---------|-----------|-----------|----------------|--------
 2015-07-02 | 69.55 | 69.75 | 69.3  | 70.15 | 17180.0 | -0.577588 | -0.302581 | -0.275007      | 73.7404
 2015-07-03 | 69.55 | 70.25 | 69.45 | 69.55 | 13640.0 | -0.74297  | -0.390658 | -0.352311      | 73.7224
 2015-07-06 | 67.6  | 68.85 | 67.0  | 69.55 | 34244.0 | -0.864075 | -0.485342 | -0.378734      | 73.6964
