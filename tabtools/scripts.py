@@ -220,7 +220,7 @@ def ttpretty():
     """
     DELIMITER = '\t'
     header = sys.stdin.readline()
-    fields = DataDescription.parse(header).fields
+    fields = Header.parse(header).fields
     column_widths = [len(str(field)) for field in fields]
 
     file_name = tempfile.mkstemp()[1]
