@@ -102,7 +102,7 @@ def ttsort():
 
     fields = [f.title for f in files.header.fields]
     options = [
-        '--field-separator=' + str(files.header.delimiter),
+        '--field-separator=' + quote(files.header.delimiter),
     ] + [
         '-k{0},{0}'.format(fields.index(key) + 1) for key in args.keys
     ]
