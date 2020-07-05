@@ -5,7 +5,7 @@
 PACKAGE_PATH=$(pwd)"/tabtools"
 BUILD_PATH=$(pwd)"/dist"
 
-build_script() {
+build_python_script() {
     SCRIPT_FILENAME=$BUILD_PATH/$1  # add prefir 't' to the function name
     mkdir -p $BUILD_PATH
 
@@ -36,10 +36,29 @@ build_script() {
     chmod +x $SCRIPT_FILENAME
 }
 
-build_script ttmap
-build_script ttreduce
-build_script ttsort
-build_script ttplot
+build_shell_script() {
+    SCRIPT_FILENAME=$BUILD_PATH/$1
+    mkdir -p $BUILD_PATH
 
-cp $(pwd)/bin/tttail $BUILD_PATH
-cp $(pwd)/bin/ttpretty $BUILD_PATH
+    echo "#!/usr/bin/env sh" > $SCRIPT_FILENAME
+
+    printf '# VERSION: ' >> $SCRIPT_FILENAME
+    # Original line to extract the version was rewritten without usage of python to run on bare VM (alpine)
+    # python -c 'from tabtools import __version__; print(__version__)' >> $SCRIPT_FILENAME
+    grep -o "[0-9]\+,\s\+[0-9]\+,\s\+[0-9]\+" tabtools/__init__.py | sed 's/\,\s\+/\./g' >> $SCRIPT_FILENAME
+
+    # Prefix every line in LICENSE with "# "
+    cat LICENSE | sed "s/^/# /" >> $SCRIPT_FILENAME
+
+    cat $(pwd)/bin/$1.sh >> $SCRIPT_FILENAME
+
+    chmod +x $SCRIPT_FILENAME
+}
+
+build_python_script ttmap
+build_python_script ttreduce
+build_python_script ttsort
+build_python_script ttplot
+
+build_shell_script tttail
+build_shell_script ttpretty
