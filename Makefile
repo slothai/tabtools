@@ -25,7 +25,7 @@ env:
 .PHONY: test
 # target: test - Runs tests
 test: clean
-	$(ENV)/bin/pytest $(CURDIR)/tabtools/tests
+	$(ENV)/bin/python -m unittest
 
 .PHONY: build
 # target: build - build self-executable tabtools scripts
