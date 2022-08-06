@@ -14,7 +14,7 @@ python3 -m pip install --user tabtools
 ### Tests
 
 ```
-make test
+python -m unittest
 ```
 
 ### Examples
